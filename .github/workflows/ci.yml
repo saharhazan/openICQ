@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, unit and web end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @openicq/e2e exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
+  desktop:
+    name: Desktop app on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox needs.
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: pnpm --filter @openicq/desktop build
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm --filter @openicq/e2e test:desktop
+      - if: runner.os != 'Linux'
+        run: pnpm --filter @openicq/e2e test:desktop
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-e2e-${{ matrix.os }}
+          path: tests/e2e/test-results
+          retention-days: 7
+
+  docker:
+    name: Server image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f docker/Dockerfile -t openicq-server .
+      - name: Start and check health
+        run: |
+          docker run -d --name openicq -p 5190:5190 openicq-server
+          for i in $(seq 1 30); do
+            if curl -fsS -m 3 http://127.0.0.1:5190/api/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs openicq
+          exit 1

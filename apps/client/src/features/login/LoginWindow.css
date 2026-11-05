@@ -1,0 +1,45 @@
+/* Dialog 1007 is 241 x 151 px of client area; the buttons and rows follow its layout. */
+.login-window {
+  width: 270px;
+}
+
+.login-window__form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.login-window__header {
+  min-height: 14px;
+  margin: 2px 0 4px;
+  font-weight: bold;
+}
+
+.login-window__row {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
+}
+
+.login-window__row input[type='password'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.login-window__rule {
+  height: 0;
+  border-top: 1px solid #000;
+  margin: 4px 0 2px;
+}
+
+.login-window__buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.login-window__buttons button {
+  min-width: 56px;
+  padding: 0 6px;
+  white-space: nowrap;
+}

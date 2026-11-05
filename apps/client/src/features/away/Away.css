@@ -1,0 +1,35 @@
+/* Dialog 2064: 300 x 154 px. */
+.away-dialog {
+  width: 306px;
+}
+
+.away-dialog__text {
+  min-height: 44px;
+}
+
+.away-dialog__edit {
+  height: 56px;
+}
+
+.away-dialog__ok {
+  min-width: 93px;
+}
+
+.read-away {
+  width: 320px;
+}
+
+.read-away__heading {
+  font-weight: bold;
+  margin: 2px 0 6px;
+}
+
+.read-away__label {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.read-away__text {
+  height: 70px;
+  background: #ffffff;
+}

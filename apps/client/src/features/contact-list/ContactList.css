@@ -1,0 +1,159 @@
+/* icq.exe dialog 2010: a narrow, tall, resizable window (165 x 323 px client area). */
+.contact-list .icq-window__body {
+  padding: 2px;
+  gap: 3px;
+}
+
+.cl-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* ContactListColor = COLOR_BTNFACE in the original. */
+  background: #c0c0c0;
+  box-shadow: var(--border-field);
+  padding: 2px;
+  outline: none;
+  user-select: none;
+}
+
+.cl-list:focus-visible .cl-row.is-selected .cl-row__name {
+  outline: 1px dotted #ffffff;
+}
+
+.cl-section__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  margin: 1px 0;
+  color: #000000;
+  white-space: nowrap;
+}
+
+/* "Online" centred in the row with a line on each side. */
+.cl-section__bar::before,
+.cl-section__bar::after {
+  content: '';
+  flex: 1 1 auto;
+  border-top: 1px solid var(--button-shadow);
+  border-bottom: 1px solid var(--button-highlight);
+}
+
+.cl-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 2px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.cl-row__icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.cl-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+}
+
+.cl-row--online .cl-row__name {
+  color: #0000ff;
+}
+
+.cl-row--offline .cl-row__name {
+  color: #ff0000;
+}
+
+.cl-row--notInList .cl-row__name {
+  color: #000080;
+}
+
+/* AuthorizeUserColor */
+.cl-row--awaiting .cl-row__name {
+  color: #800040;
+}
+
+.cl-row.has-unread .cl-row__name {
+  font-weight: bold;
+}
+
+.cl-row.is-selected .cl-row__name {
+  background: var(--dialog-blue);
+  color: #ffffff;
+}
+
+.cl-row__rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 16px;
+  padding: 0 2px;
+  line-height: 14px;
+}
+
+.cl-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+}
+
+.cl-buttons__bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cl-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 21px;
+  min-height: 21px;
+  min-width: 0;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cl-button.is-pressed {
+  box-shadow: var(--border-sunken-outer), var(--border-sunken-inner);
+}
+
+.cl-button--main {
+  width: 53px;
+  font-weight: bold;
+  font-style: italic;
+}
+
+.cl-button--status {
+  flex: 0 1 98px;
+  justify-content: flex-start;
+}
+
+.cl-button--add {
+  align-self: stretch;
+  font-weight: bold;
+}
+
+.cl-button--notice {
+  align-self: stretch;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.cl-button--notice:disabled {
+  color: #000000;
+  text-shadow: none;
+}
+
+.cl-button--notice.has-event {
+  font-weight: bold;
+  /* 98.css paints button text with text-shadow. */
+  text-shadow: 0 0 #000080;
+}

@@ -1,0 +1,69 @@
+# Installers for openICQ: macOS (dmg, zip), Windows (NSIS setup), Linux (AppImage, deb).
+# Built per OS on GitHub Actions (.github/workflows/release.yml); unsigned.
+appId: io.github.saharhazan.openicq
+productName: openICQ
+copyright: Copyright (c) 2026 Sahar Hazan
+artifactName: openICQ-${version}-${os}-${arch}.${ext}
+directories:
+  output: release
+  buildResources: build
+files:
+  - package.json
+  - dist/**/*
+  - "!dist/client/**"
+  - "!dist/*.mjs"
+  - "!**/*.map"
+# The web client stays outside the asar archive: the embedded server reads it as plain files.
+extraResources:
+  - from: dist/client
+    to: client
+    filter: ["**/*", "!**/*.map"]
+asar: true
+npmRebuild: false
+mac:
+  category: public.app-category.social-networking
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # No Apple Developer ID: ad-hoc signed, so Apple Silicon runs it (Gatekeeper asks once).
+  identity: "-"
+  hardenedRuntime: false
+dmg:
+  title: openICQ ${version}
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: openICQ
+linux:
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64, arm64]
+  category: Network
+  synopsis: Classic ICQ 2001b messenger, rebuilt
+  maintainer: Sahar Hazan <saharhazan@users.noreply.github.com>
+  executableName: openicq
+  desktop:
+    entry:
+      Name: openICQ
+      Comment: The classic ICQ messenger, rebuilt
+      Categories: Network;InstantMessaging;Chat;
+publish: null
+# Locks the shipped binary: no running as plain Node, no NODE_OPTIONS or --inspect,
+# and the app only loads from its integrity-checked asar archive.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  resetAdHocDarwinSignature: true

@@ -1,0 +1,106 @@
+.taskbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 2px;
+  background: var(--surface);
+  box-shadow: inset 0 1px var(--button-face), inset 0 2px var(--button-highlight);
+  z-index: 50000;
+  font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  font-size: 11px;
+  -webkit-font-smoothing: none;
+}
+
+.taskbar button {
+  min-width: 0;
+  min-height: 0;
+}
+
+.taskbar__start {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 5px 0 3px;
+  font-weight: bold;
+  flex: none;
+}
+
+.taskbar__start.is-pressed {
+  box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+}
+
+.taskbar__tasks {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.taskbar__task {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  width: 160px;
+  min-width: 40px;
+  flex: 0 1 160px;
+  padding: 0 4px;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.taskbar__task.is-active {
+  box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+  background-color: #c0c0c0;
+  background-image:
+    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%),
+    linear-gradient(45deg, #ffffff 25%, transparent 25%, transparent 75%, #ffffff 75%);
+  background-size: 2px 2px;
+  background-position: 0 0, 1px 1px;
+  font-weight: bold;
+}
+
+.taskbar__task-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskbar__tray {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px 0 4px;
+  box-shadow: var(--border-status-field);
+}
+
+.taskbar__tray-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.taskbar__tray-icon:active,
+.taskbar__tray-icon:focus {
+  box-shadow: none;
+  outline: 1px dotted #000;
+}
+
+.taskbar__clock {
+  white-space: nowrap;
+}

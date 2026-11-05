@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src data:; base-uri 'none'; form-action 'none'" />
+    <title>openICQ Connection Settings</title>
+    <link rel="stylesheet" href="98.css" />
+    <link rel="stylesheet" href="connection.css" />
+    <script src="page.js" defer></script>
+  </head>
+  <body>
+    <form class="window" id="dialog" novalidate>
+      <div class="title-bar">
+        <div class="title-bar-text">openICQ Connection Settings</div>
+        <div class="title-bar-controls"><button type="button" aria-label="Close" id="close"></button></div>
+      </div>
+      <div class="window-body">
+        <p>Choose how openICQ connects to the ICQ network.</p>
+        <fieldset>
+          <legend>Server</legend>
+          <div class="field-row">
+            <input type="radio" name="mode" id="mode-host" value="host" />
+            <label for="mode-host">Host a server on this computer</label>
+          </div>
+          <div class="indent" id="host-options">
+            <div class="field-row">
+              <label for="port">Port:</label>
+              <input id="port" type="text" inputmode="numeric" maxlength="5" size="6" />
+            </div>
+            <div class="field-row">
+              <input type="checkbox" id="share" />
+              <label for="share">Let other computers on my network connect</label>
+            </div>
+            <p class="hint" id="network-urls" hidden></p>
+          </div>
+          <div class="field-row">
+            <input type="radio" name="mode" id="mode-connect" value="connect" />
+            <label for="mode-connect">Connect to a server</label>
+          </div>
+          <div class="indent" id="connect-options">
+            <div class="field-row">
+              <label for="server">Address:</label>
+              <input id="server" type="text" placeholder="192.168.1.20:5190" spellcheck="false" />
+            </div>
+          </div>
+        </fieldset>
+        <p class="problem" id="problem" role="alert" hidden></p>
+        <section class="buttons">
+          <button type="submit" class="default" id="ok">Connect</button>
+          <button type="button" id="cancel">Cancel</button>
+        </section>
+      </div>
+    </form>
+  </body>
+</html>

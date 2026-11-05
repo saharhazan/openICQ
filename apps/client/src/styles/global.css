@@ -1,0 +1,62 @@
+/*
+ * The 98.css build inlines its colours, so the design tokens used by the
+ * ICQ styles are declared here (values from 98.css, MIT licence).
+ */
+:root {
+  --text-color: #222222;
+  --surface: #c0c0c0;
+  --button-highlight: #ffffff;
+  --button-face: #dfdfdf;
+  --button-shadow: #808080;
+  --window-frame: #0a0a0a;
+  --dialog-blue: #000080;
+  --dialog-blue-light: #1084d0;
+  --border-raised-outer: inset -1px -1px var(--window-frame), inset 1px 1px var(--button-highlight);
+  --border-raised-inner: inset -2px -2px var(--button-shadow), inset 2px 2px var(--button-face);
+  --border-sunken-outer: inset -1px -1px var(--button-highlight), inset 1px 1px var(--window-frame);
+  --border-sunken-inner: inset -2px -2px var(--button-face), inset 2px 2px var(--button-shadow);
+  --border-field: inset -1px -1px var(--button-highlight), inset 1px 1px var(--button-shadow), inset -2px -2px var(--button-face),
+    inset 2px 2px var(--window-frame);
+  --border-status-field: inset -1px -1px var(--button-face), inset 1px 1px var(--button-shadow);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #008080;
+  overflow: hidden;
+  font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  font-size: 11px;
+  -webkit-font-smoothing: none;
+  color: #000000;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.pixel-icon {
+  display: inline-block;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+/* 98.css sets 75px minimum on every button; ICQ dialogs size their own. */
+button {
+  min-width: 0;
+}
+
+button.default {
+  font-weight: normal;
+}
+
+/* Read-only edits show their value in black on the dialog face, like Win32 read-only edit controls. */
+input[readonly],
+textarea[readonly] {
+  color: #000000;
+}

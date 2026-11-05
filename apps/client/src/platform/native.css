@@ -1,0 +1,37 @@
+/* Desktop app: one ICQ window per native, frameless window. */
+html.openicq-native,
+html.openicq-native body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.openicq-native__root {
+  height: 100%;
+}
+
+/* Content-sized windows: the frame shrinks to its content and the native window is fitted to it. */
+.icq-window--native {
+  left: 0;
+  top: 0;
+}
+
+/* Resizable windows fill the native window, which the OS resizes. */
+.icq-window--native.icq-window--resizable {
+  position: fixed;
+  inset: 0;
+}
+
+/* The title bar moves the native window; its buttons stay clickable. */
+.icq-window--native .title-bar {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.icq-window--native .title-bar-controls,
+.icq-window--native .title-bar-controls button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}

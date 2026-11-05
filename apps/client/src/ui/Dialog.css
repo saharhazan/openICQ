@@ -1,0 +1,90 @@
+/* Shared layout helpers for ICQ dialogs on top of 98.css. */
+
+.dialog-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex: none;
+}
+
+.dialog-buttons--center {
+  justify-content: center;
+}
+
+.dialog-buttons--end {
+  justify-content: flex-end;
+}
+
+.dialog-buttons--split {
+  justify-content: space-between;
+}
+
+.dialog-buttons button {
+  min-width: 75px;
+}
+
+.dialog-spacer {
+  flex: 1 1 auto;
+}
+
+.message-box {
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.message-box__content {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 6px 6px 4px;
+}
+
+.message-box__text {
+  white-space: pre-line;
+  line-height: 1.4;
+  padding-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: center;
+}
+
+.field-grid input[type='text'],
+.field-grid input[type='password'],
+.field-grid input[type='email'],
+.field-grid input[type='number'],
+.field-grid select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dialog-text {
+  white-space: pre-line;
+  line-height: 1.35;
+  margin: 0 0 6px;
+}
+
+.dialog-error {
+  color: #c00000;
+  margin: 4px 0 0;
+}
+
+.sunken-list {
+  background: #fff;
+  box-shadow: var(--border-field);
+  padding: 2px;
+  overflow: auto;
+}
+
+textarea.dialog-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  font-size: 11px;
+}

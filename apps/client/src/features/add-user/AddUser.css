@@ -1,0 +1,113 @@
+/* icqaddus.dll dialog 110: 487 x 336 px. */
+.auth-request {
+  width: 440px;
+}
+
+.auth-request__who {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--button-shadow);
+  box-shadow: 1px 1px 0 var(--button-highlight) inset, 1px 1px 0 var(--button-highlight);
+}
+
+.auth-request__who label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.auth-request__who input {
+  width: 90px;
+  min-width: 0;
+}
+
+.auth-request__body {
+  min-height: 150px;
+}
+
+.auth-request__reason {
+  height: 96px;
+}
+
+.auth-request__result {
+  font-weight: bold;
+  padding-top: 20px;
+}
+
+/* icqsearc.dll dialog 2066 frame with pages 2012 / 2011 (367 x 296 px). */
+.add-user {
+  width: 480px;
+}
+
+.add-user__main {
+  display: flex;
+  gap: 10px;
+  min-height: 300px;
+}
+
+.add-user__page {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-user__welcome {
+  text-align: center;
+  font-weight: bold;
+  margin: 0 0 4px;
+}
+
+.add-user__group {
+  margin: 0;
+}
+
+.add-user__group legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.add-user__group .field-grid {
+  grid-template-columns: 74px 1fr;
+}
+
+.add-user__results {
+  height: 170px;
+  overflow: auto;
+}
+
+.add-user__results table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.add-user__results th {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.add-user__results td {
+  white-space: nowrap;
+  padding: 1px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.add-user__results tr.highlighted td {
+  background: var(--dialog-blue);
+  color: #ffffff;
+}
+
+.add-user__results tbody tr {
+  cursor: default;
+}
+
+.auth-request__who label span {
+  white-space: nowrap;
+}

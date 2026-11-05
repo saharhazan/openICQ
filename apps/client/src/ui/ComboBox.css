@@ -1,0 +1,63 @@
+.combo {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.combo input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 20px;
+}
+
+.combo__button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  min-width: 16px;
+  min-height: 0;
+  padding: 0;
+}
+
+.combo__button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -2px 0 0 -4px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #000;
+}
+
+.combo__button:disabled::after {
+  border-top-color: var(--button-shadow);
+}
+
+.combo__list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #000;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.combo__list li {
+  padding: 1px 3px;
+  cursor: default;
+}
+
+.combo__list li:hover,
+.combo__list li.is-selected {
+  background: var(--dialog-blue);
+  color: #fff;
+}

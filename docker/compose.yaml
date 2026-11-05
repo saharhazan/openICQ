@@ -1,0 +1,20 @@
+# docker compose -f docker/compose.yaml up -d
+# Then open http://localhost:5190 (or point the desktop app's "Connect to a server" at this machine).
+services:
+  openicq:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: openicq-server
+    restart: unless-stopped
+    ports:
+      - "5190:5190"
+    environment:
+      # Every address people type in their browser or desktop app, comma separated.
+      ALLOWED_ORIGINS: http://localhost:5190,http://127.0.0.1:5190
+      # Set to true when the server sits behind HTTPS.
+      COOKIE_SECURE: "false"
+    volumes:
+      - openicq-data:/data
+volumes:
+  openicq-data:

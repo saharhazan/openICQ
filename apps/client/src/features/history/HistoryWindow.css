@@ -1,0 +1,81 @@
+/* icq.exe dialog 2020: 522 x 257 px, resizable. */
+.history-window .icq-window__body {
+  gap: 6px;
+}
+
+.history-window__list {
+  flex: 3 1 0;
+  min-height: 80px;
+  overflow: auto;
+}
+
+.history-window__list table {
+  width: 100%;
+}
+
+.history-window__list td {
+  white-space: nowrap;
+  padding: 1px 4px;
+}
+
+.history-window__content {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-window__own {
+  color: #0000ff;
+  font-weight: bold;
+}
+
+.history-window__peer {
+  color: #ff0000;
+  font-weight: bold;
+}
+
+.history-window__list tr.highlighted td {
+  color: #ffffff;
+}
+
+.history-window__empty {
+  padding: 8px;
+  color: #808080;
+}
+
+.history-window__details {
+  flex: 1 1 0;
+  min-height: 50px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-window__text {
+  flex: 1 1 auto;
+  overflow: auto;
+  background: #ffffff;
+  box-shadow: var(--border-field);
+  padding: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.history-window__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  flex-wrap: wrap;
+}
+
+.history-window__controls input[type='text'] {
+  width: 110px;
+}
+
+.history-window__find {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

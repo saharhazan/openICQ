@@ -1,0 +1,72 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #c0c0c0;
+  font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  font-size: 11px;
+  -webkit-font-smoothing: none;
+  user-select: none;
+}
+
+.window {
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.title-bar {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.title-bar-controls button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.window-body p {
+  margin: 4px 0 8px;
+}
+
+fieldset {
+  padding: 6px 10px 8px;
+}
+
+.field-row {
+  margin: 4px 0;
+}
+
+.indent {
+  margin-left: 22px;
+}
+
+.indent label {
+  min-width: 46px;
+}
+
+#server {
+  width: 200px;
+}
+
+.hint {
+  color: #000080;
+  user-select: text;
+}
+
+.problem {
+  color: #800000;
+  white-space: pre-line;
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+button {
+  min-width: 75px;
+}

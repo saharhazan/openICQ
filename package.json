@@ -1,0 +1,36 @@
+{
+  "name": "openicq",
+  "version": "1.0.0",
+  "description": "openICQ: a faithful, open-source rebuild of the classic ICQ 2001b messenger.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saharhazan/openICQ.git"
+  },
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @openicq/server --filter @openicq/client dev",
+    "build": "pnpm --filter @openicq/client build",
+    "start": "pnpm --filter @openicq/server start",
+    "test": "pnpm -r --filter=!@openicq/e2e test",
+    "test:e2e": "pnpm --filter @openicq/e2e test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test:desktop": "pnpm --filter @openicq/desktop build && pnpm --filter @openicq/e2e test:desktop",
+    "dev:desktop": "pnpm --filter @openicq/desktop start",
+    "dist:desktop": "pnpm --filter @openicq/desktop dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0"
+  }
+}
