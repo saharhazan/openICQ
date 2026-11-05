@@ -69,15 +69,15 @@ test.describe.serial('openICQ, two users', () => {
   test('chats in real time both ways', async () => {
     const bobSession = await openMessageSession(bob, 'Alice');
     await sendWithCtrlEnter(bobSession, 'Hi Alice! See https://example.com');
-    await expect(bobSession.getByText('Hi Alice!')).toBeVisible();
+    await expect(bobSession.getByRole('log').getByText('Hi Alice!')).toBeVisible();
 
     const aliceSession = await openMessageSession(alice, 'Bob');
-    await expect(aliceSession.getByText('Hi Alice!')).toBeVisible();
+    await expect(aliceSession.getByRole('log').getByText('Hi Alice!')).toBeVisible();
     const link = aliceSession.getByRole('link', { name: 'https://example.com' });
     await expect(link).toHaveAttribute('rel', /noopener/);
 
     await sendWithCtrlEnter(aliceSession, 'Hello Bob,\nnice to see you.');
-    await expect(bobSession.getByText('nice to see you.')).toBeVisible();
+    await expect(bobSession.getByRole('log').getByText('nice to see you.')).toBeVisible();
   });
 
   test('shows the auto-response when the recipient is Away', async () => {
@@ -123,7 +123,7 @@ test.describe.serial('openICQ, two users', () => {
     const bobSession = win(bob, /^Alice .*Message Session/);
     await bobSession.getByRole('textbox', { name: 'Message' }).fill('This one waits for you offline.');
     await bobSession.getByRole('button', { name: 'Send' }).click();
-    await expect(bobSession.getByText('This one waits for you offline.')).toBeVisible();
+    await expect(bobSession.getByRole('log').getByText('This one waits for you offline.')).toBeVisible();
 
     await chooseStatus(alice, 'Available/Connect');
     await expect(alice.getByRole('button', { name: 'Status: Online' })).toBeVisible();

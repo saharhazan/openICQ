@@ -6,7 +6,7 @@
  */
 import { expect, test, type ElectronApplication } from '@playwright/test';
 import { completeRegistration, contact, sendWithCtrlEnter, win } from '../specs/helpers.ts';
-import { expectVisible, launch, nativeWindow, osWindows } from './native.ts';
+import { clickClosing, expectVisible, launch, nativeWindow, osWindows } from './native.ts';
 
 const PORT = 5293;
 
@@ -24,9 +24,11 @@ test.describe.serial('openICQ desktop, host and client', () => {
 
   async function registerIn(app: ElectronApplication, nick: string): Promise<number> {
     const login = await nativeWindow(app, 'Connect to The ICQ Network');
-    await login.getByRole('button', { name: 'Register A New User' }).click();
+    await clickClosing(login, login.getByRole('button', { name: 'Register A New User' }));
     const wizard = await nativeWindow(app, 'ICQ Registration');
-    const uin = await completeRegistration(win(wizard, 'ICQ Registration'), nick, { authRequired: false });
+    const uin = await completeRegistration(win(wizard, 'ICQ Registration'), nick, { authRequired: false }, (button) =>
+      clickClosing(wizard, button),
+    );
     const list = await nativeWindow(app, String(uin));
     await expect(list.getByRole('button', { name: 'Status: Online' })).toBeVisible();
     return uin;
@@ -66,12 +68,12 @@ test.describe.serial('openICQ desktop, host and client', () => {
     await finder.getByLabel('ICQ#:').fill(String(aliceUin));
     await finder.getByRole('button', { name: 'Next >' }).click();
     await expect(finder.getByRole('table', { name: 'Search results' })).toContainText('Alice');
-    await finder.getByRole('button', { name: 'Next >' }).click();
+    await clickClosing(finderPage, finder.getByRole('button', { name: 'Next >' }));
     const addPage = await nativeWindow(bob, 'Add User to Contact List');
     const add = win(addPage, 'Add User to Contact List');
     await add.getByRole('button', { name: 'Next >>' }).click();
     await expect(add).toContainText('Alice has been added to your Contact List.');
-    await add.getByRole('button', { name: 'Done' }).click();
+    await clickClosing(addPage, add.getByRole('button', { name: 'Done' }));
     await expect(bobList.getByRole('group', { name: 'Online' }).getByRole('option', { name: /Alice/ })).toBeVisible();
 
     await contact(bobList, 'Alice').dblclick();
@@ -106,7 +108,7 @@ test.describe.serial('openICQ desktop, host and client', () => {
     const noticePage = await nativeWindow(alice, '"You Were Added"');
     const notice = win(noticePage, '"You Were Added"');
     await expect(notice).toContainText('The user added you to his/her Contact List.');
-    await notice.getByRole('group', { name: 'Response Action' }).getByRole('button', { name: 'Close' }).click();
+    await clickClosing(noticePage, notice.getByRole('group', { name: 'Response Action' }).getByRole('button', { name: 'Close' }));
     // Dismissing goes through the server; until it is done the notice is still the next event.
     await expect.poll(async () => (await osWindows(alice)).some((w) => w.title === '"You Were Added"')).toBe(false);
 
@@ -120,7 +122,7 @@ test.describe.serial('openICQ desktop, host and client', () => {
     await bobList.getByRole('menuitem', { name: 'Shut Down' }).click();
     const confirm = await nativeWindow(bob, 'Confirm Shut Down...');
     const exited = new Promise<void>((resolve) => bob.process().once('exit', () => resolve()));
-    await win(confirm, 'Confirm Shut Down...').getByRole('button', { name: 'Yes' }).click();
+    await clickClosing(confirm, win(confirm, 'Confirm Shut Down...').getByRole('button', { name: 'Yes' }));
     await exited;
   });
 

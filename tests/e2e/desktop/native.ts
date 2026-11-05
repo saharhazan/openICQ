@@ -1,5 +1,5 @@
 /** Helpers for the desktop app: every ICQ window is its own native window (a Playwright page). */
-import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test';
+import { _electron as electron, expect, type ElectronApplication, type Locator, type Page } from '@playwright/test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -62,5 +62,23 @@ export function osWindows(app: ElectronApplication): Promise<NativeWindowInfo[]>
 }
 
 export async function expectVisible(app: ElectronApplication, title: string, visible: boolean): Promise<void> {
-  await expect.poll(async () => (await osWindows(app)).find((w) => w.title === title)?.visible ?? false).toBe(visible);
+  try {
+    await expect.poll(async () => (await osWindows(app)).find((w) => w.title === title)?.visible ?? false).toBe(visible);
+  } catch (error) {
+    // Say what the OS actually shows, so a failure on a CI runner can be understood from the log.
+    const windows = JSON.stringify(await osWindows(app));
+    throw new Error(`Expected "${title}" visible=${visible}; native windows: ${windows}`, { cause: error });
+  }
+}
+
+/**
+ * Clicks a button whose job is to close its own native window (Register, Done, OK...).
+ * The window can be gone before Playwright hears back from the click; that is success.
+ */
+export async function clickClosing(page: Page, locator: Locator): Promise<void> {
+  try {
+    await locator.click();
+  } catch (error) {
+    if (!page.isClosed() && !String(error).includes('has been closed')) throw error;
+  }
 }

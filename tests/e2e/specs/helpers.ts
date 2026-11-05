@@ -26,7 +26,13 @@ export async function openUser(browser: Browser, label: string, sink: string[]):
 }
 
 /** Fills the "ICQ Registration" wizard (already open) and returns the new UIN. */
-export async function completeRegistration(wizard: Locator, nick: string, options: { authRequired: boolean }): Promise<number> {
+export async function completeRegistration(
+  wizard: Locator,
+  nick: string,
+  options: { authRequired: boolean },
+  /** How to press the last Next, which closes the wizard (a native window in the desktop app). */
+  finish: (button: Locator) => Promise<void> = (button) => button.click(),
+): Promise<number> {
   await expect(wizard).toBeVisible();
   await wizard.getByRole('button', { name: 'NEW ICQ#' }).click();
   await wizard.getByLabel('First Name:').fill(nick);
@@ -42,7 +48,7 @@ export async function completeRegistration(wizard: Locator, nick: string, option
   if (options.authRequired) {
     await wizard.getByText('My authorization is required before users add me to their Contact List').click();
   }
-  await wizard.getByRole('button', { name: 'Next' }).click();
+  await finish(wizard.getByRole('button', { name: 'Next' }));
   return uin;
 }
 

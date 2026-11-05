@@ -53,7 +53,7 @@ const BOUNDS_DEBOUNCE_MS = 300;
  * A window closed from its own button (OK, Done, Cancel) is hidden at once and
  * destroyed a moment later, so the click that closed it can finish first.
  */
-const DESTROY_DELAY_MS = 250;
+const DESTROY_DELAY_MS = 1_000;
 const SURFACE = '#c0c0c0';
 /** The page may come from a remote server: it cannot flood the screen with windows... */
 const MAX_CHILD_WINDOWS = 30;
