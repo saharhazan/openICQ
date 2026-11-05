@@ -6,9 +6,11 @@ import type { TransactionRunner } from '../../domain/ports.ts';
 
 export const MEMORY_DATABASE = ':memory:';
 const BUSY_TIMEOUT_MS = 5000;
+/** The data directory holds password and session hashes: owner only. */
+export const DATA_DIRECTORY_MODE = 0o700;
 
 export function openDatabase(path: string): DatabaseSync {
-  if (path !== MEMORY_DATABASE) mkdirSync(dirname(path), { recursive: true });
+  if (path !== MEMORY_DATABASE) mkdirSync(dirname(path), { recursive: true, mode: DATA_DIRECTORY_MODE });
   const db = new DatabaseSync(path, { enableForeignKeyConstraints: true, timeout: BUSY_TIMEOUT_MS });
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA synchronous = NORMAL');

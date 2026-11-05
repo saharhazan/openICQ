@@ -15,7 +15,7 @@ export function useServices(): Services {
   return services;
 }
 
-/** Subscribes a component to a slice of the store. */
-export function useIcq<T>(selector: (state: AppStoreState) => T): T {
+/** Subscribes a component to a slice of the store. Selectors must return stable values. */
+export function useApp<T>(selector: (state: AppStoreState) => T): T {
   return useStore(useServices().store, selector);
 }

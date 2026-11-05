@@ -12,7 +12,6 @@ import { build } from 'esbuild';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const dist = join(root, 'dist');
-const require = createRequire(import.meta.url);
 
 async function exists(path) {
   try {
@@ -65,17 +64,20 @@ await Promise.all([
   }),
 ]);
 
-const css98 = dirname(require.resolve('98.css/dist/98.css'));
+// The Connection Settings page uses the client's bundled Source Sans 3 (OFL).
+const fonts = join(dirname(createRequire(join(root, '..', 'client', 'package.json')).resolve('@fontsource/source-sans-3/package.json')), 'files');
 await Promise.all([
   cp(join(root, 'src/connection/connection.html'), join(dist, 'connection/connection.html')),
   cp(join(root, 'src/connection/connection.css'), join(dist, 'connection/connection.css')),
-  ...['98.css', 'ms_sans_serif.woff', 'ms_sans_serif.woff2', 'ms_sans_serif_bold.woff', 'ms_sans_serif_bold.woff2'].map((file) =>
-    cp(join(css98, file), join(dist, 'connection', file)),
+  ...['400', '600'].map((weight) =>
+    cp(join(fonts, `source-sans-3-latin-${weight}-normal.woff2`), join(dist, 'connection', `source-sans-3-latin-${weight}-normal.woff2`)),
   ),
   cp(clientDist, join(dist, 'client'), { recursive: true }),
   cp(join(root, 'build/icon.png'), join(dist, 'assets/icon.png')),
   cp(join(root, 'build/tray.png'), join(dist, 'assets/tray.png')),
   cp(join(root, 'build/tray@2x.png'), join(dist, 'assets/tray@2x.png')),
+  cp(join(root, 'build/tray-unread.png'), join(dist, 'assets/tray-unread.png')),
+  cp(join(root, 'build/tray-unread@2x.png'), join(dist, 'assets/tray-unread@2x.png')),
 ]);
 
 process.stdout.write(`openICQ desktop built into ${dist}\n`);

@@ -1,0 +1,226 @@
+/* Group dialogs and the group sidebar (GroupChatOperations.cpp, sidebar/GroupProfile.cpp). */
+
+.group-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-picker {
+  position: relative;
+  align-self: center;
+  margin: 4px 0 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+}
+
+.avatar-picker-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--base-globalwhite);
+  box-shadow: 0 0 0 2px var(--base-globalwhite);
+}
+
+.member-picker {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.picker-search {
+  margin: 0 0 8px;
+}
+
+.picker-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0 -20px;
+}
+
+.picker-row {
+  position: relative;
+  padding: 0 20px;
+}
+
+/* The real checkbox covers the row invisibly, so clicks and automation reach it. */
+.picker-row input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.picker-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--base-secondary);
+}
+
+.picker-row input:checked + .picker-check {
+  border-color: var(--primary);
+  background: var(--primary) radial-gradient(circle, var(--base-globalwhite) 0 3px, transparent 3.5px);
+}
+
+.picker-row input:focus-visible + .picker-check {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.refused-step .dialog-text {
+  margin-bottom: 8px;
+}
+
+.refused-list {
+  margin: 0 -20px;
+  padding: 0;
+  list-style: none;
+}
+
+.refused-list .contact-row {
+  padding: 0 20px;
+  cursor: default;
+}
+
+.refused-footer {
+  padding: 12px 0 0;
+}
+
+.join-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.join-members {
+  margin: 8px 0 0;
+  color: var(--base-primary);
+  font-size: calc(14px + var(--fs));
+}
+
+.join-about {
+  margin: 8px 0 0;
+  font-size: calc(15px + var(--fs));
+  white-space: pre-wrap;
+}
+
+.join-note {
+  margin: 12px 0 0;
+  color: var(--base-primary);
+  font-size: calc(14px + var(--fs));
+}
+
+.profile-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 0 12px;
+  text-align: center;
+}
+
+.profile-name {
+  margin: 8px 0 0;
+  font-size: calc(18px + var(--fs));
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.profile-sub {
+  margin: 0;
+  font-size: calc(14px + var(--fs));
+  color: var(--base-primary);
+}
+
+.sidebar-section {
+  padding: 8px 0;
+  border-top: 1px solid var(--base-bright);
+}
+
+.sidebar-section:empty {
+  display: none;
+}
+
+.sidebar-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-caption {
+  margin: 4px 0;
+  font-size: calc(12px + var(--fs));
+  font-weight: 600;
+  color: var(--base-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-text {
+  margin: 0 0 4px;
+  font-size: calc(15px + var(--fs));
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: calc(14px + var(--fs));
+  word-break: break-all;
+}
+
+.member-list {
+  margin: 0 -20px;
+  padding: 0;
+  list-style: none;
+}
+
+.member-row {
+  width: 100%;
+  padding: 0 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--text-solid);
+}
+
+.member-role {
+  flex: none;
+  font-size: calc(13px + var(--fs));
+  color: var(--base-primary);
+}
+
+.request-row {
+  padding: 0 20px;
+  cursor: default;
+}
+
+.request-row .text-button {
+  flex: none;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}

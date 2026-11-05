@@ -10,6 +10,7 @@ const HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   not_found: 404,
   conflict: 409,
   rate_limited: 429,
+  too_large: 413,
   not_connected: 409,
   timeout: 504,
   internal: 500,
@@ -31,7 +32,8 @@ export function registerErrorHandler(app: FastifyInstance): void {
     const status = error.statusCode;
     if (status !== undefined && status >= 400 && status < 500) {
       request.log.info({ err: error }, 'rejected malformed request');
-      const body: HttpErrorBody = { error: { code: status === 429 ? 'rate_limited' : 'bad_request', message: error.message } };
+      const code = status === 429 ? 'rate_limited' : status === 413 ? 'too_large' : 'bad_request';
+      const body: HttpErrorBody = { error: { code, message: error.message } };
       return reply.code(status).send(body);
     }
     request.log.error({ err: error }, 'unexpected error');

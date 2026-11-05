@@ -1,0 +1,438 @@
+/* Chat page: header 56, history on chat_environment, typing row 32, input 52 (DialogHeaderPanel, TypingWidget, InputWidgetUtils). */
+
+.chat-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--wallpaper);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: var(--header-h);
+  padding: 0 16px 0 12px;
+  background: var(--base-globalwhite);
+  border-bottom: 1px solid var(--base-bright);
+}
+
+.chat-header-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.chat-header-who:disabled {
+  cursor: default;
+}
+
+.chat-header-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-header-name {
+  font-size: calc(16px + var(--fs));
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-header-status {
+  font-size: calc(14px + var(--fs));
+  line-height: 16px;
+  color: var(--base-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-header-online {
+  color: var(--text-primary);
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-badge-button {
+  position: relative;
+}
+
+.header-badge {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--secondary-attention);
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.history-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.history {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  outline: none;
+}
+
+.history-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 0 4px;
+}
+
+.history-loading {
+  height: 48px;
+}
+
+.history-failed {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  color: var(--base-primary);
+  font-size: calc(14px + var(--fs));
+}
+
+.bubble:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.date-row {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+/* Date pill: base_globalwhite, 24 high, 12 px SemiBold, the bubble shadow. */
+.date-pill {
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--base-globalwhite);
+  color: var(--text-solid);
+  font-size: calc(12px + var(--fs));
+  font-weight: 600;
+  line-height: 24px;
+  box-shadow: var(--bubble-shadow);
+}
+
+.date-floating {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: fade-in 200ms var(--ease);
+}
+
+/* New messages plate: 20 high, margins 52 8 52 0, radius 4, newplate colours. */
+.new-plate {
+  height: 20px;
+  margin: 8px 52px 0;
+  border-radius: 4px;
+  background: var(--newplate-background);
+  color: var(--newplate-text);
+  font-size: calc(12px + var(--fs));
+  line-height: 20px;
+  text-align: center;
+}
+
+/* Service event: chatevent_text on ghost_ultralight_inverse, radius 12. */
+.event-row {
+  display: flex;
+  justify-content: center;
+  padding: 8px 52px 0;
+}
+
+.event-text {
+  max-width: 600px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: var(--ghost-ultralight-inverse);
+  color: var(--chatevent-text);
+  font-size: calc(13px + var(--fs));
+  line-height: 18px;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.to-bottom {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--base-globalwhite);
+  color: var(--base-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.to-bottom-count {
+  position: absolute;
+  top: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--base-globalwhite);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+/* Typing: 32 high, dots 16, text 12 in typing_text. */
+.typing-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 32px;
+  padding: 0 24px;
+  color: var(--typing-text);
+  font-size: calc(12px + var(--fs));
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: 16px;
+  height: 16px;
+}
+
+.typing-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--typing-animation);
+  animation: typing-frames 1000ms steps(6, end) infinite;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 166ms;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 333ms;
+}
+
+@keyframes typing-frames {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  33% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.composer {
+  flex: none;
+  padding: 0 0 8px;
+}
+
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+.composer-side {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 0;
+}
+
+.composer-send:not(:disabled) {
+  color: var(--primary);
+}
+
+/* Input bubble: radius 18, shadow, text 15. */
+.input-bubble {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 2px 4px 2px 16px;
+  border-radius: 18px;
+  background: var(--base-globalwhite);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--ghost-quaternary);
+}
+
+.composer-input {
+  flex: 1;
+  min-width: 0;
+  max-height: 140px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  font-size: calc(15px + var(--fs));
+  line-height: 18px;
+  resize: none;
+  outline: none;
+  transition: height 100ms var(--ease);
+}
+
+.composer-input::placeholder {
+  color: var(--base-primary);
+}
+
+.input-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 1100px;
+  margin: 0 auto 6px;
+  padding: 0 10px 0 56px;
+}
+
+.input-panel-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--primary);
+}
+
+.input-panel-title {
+  font-size: calc(13px + var(--fs));
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-panel-quote {
+  font-size: calc(13px + var(--fs));
+  color: var(--base-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: none;
+  height: 52px;
+  background: var(--base-globalwhite);
+  border-top: 1px solid var(--base-bright);
+  color: var(--base-primary);
+  font-size: calc(14px + var(--fs));
+}
+
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  min-height: 52px;
+  padding: 0 16px;
+  background: var(--base-globalwhite);
+  border-top: 1px solid var(--base-bright);
+  animation: fade-in 100ms var(--ease);
+}
+
+.selection-title {
+  flex: 1;
+  font-size: calc(15px + var(--fs));
+}
+
+.selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.selection-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text-solid);
+  font-size: calc(14px + var(--fs));
+}
+
+.selection-button:hover:not(:disabled) {
+  background: var(--base-bright-inverse);
+}
+
+.selection-button:disabled {
+  color: var(--base-tertiary);
+  cursor: default;
+}
+
+.selection-danger:not(:disabled) {
+  color: var(--secondary-attention);
+}
+
+.drop-overlay {
+  position: absolute;
+  inset: var(--header-h) 0 0;
+  z-index: 30;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--base-globalwhite) 85%, transparent);
+}
+
+.drop-zone {
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--primary);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: calc(18px + var(--fs));
+  font-weight: 600;
+}
+
+.drop-zone:hover {
+  background: var(--secondary-selected);
+}

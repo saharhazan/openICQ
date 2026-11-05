@@ -30,7 +30,7 @@ export default defineConfig({
     env: {
       PORT: String(PORT),
       HOST: '127.0.0.1',
-      DATABASE_PATH: join(databaseDir, 'icq-e2e.db'),
+      DATABASE_PATH: join(databaseDir, "openicq-e2e.db"),
       ALLOWED_ORIGINS: `http://127.0.0.1:${PORT}`,
       CLIENT_DIST_DIR: join(repoRoot, 'apps/client/dist'),
       LOG_LEVEL: 'warn',

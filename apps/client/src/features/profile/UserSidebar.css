@@ -1,0 +1,28 @@
+/* The contact profile sidebar; shares the head and section styles of groups.css. */
+
+.profile-online {
+  color: var(--text-primary);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-value-row .sidebar-text {
+  margin: 0;
+}

@@ -5,6 +5,9 @@ import {
   registerBodySchema,
   registerResultSchema,
   sessionInfoSchema,
+  uploadResultSchema,
+  type Attachment,
+  type FilePurpose,
   type LoginBody,
   type RegisterBody,
   type RegisterResult,
@@ -23,6 +26,8 @@ export interface ApiClientOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+/** Uploads may be up to 100 MB. */
+const UPLOAD_TIMEOUT_MS = 10 * 60_000;
 
 /** REST calls that exist before the WebSocket: registration, sign-in, session resume, sign-out. */
 export class ApiClient {
@@ -61,6 +66,26 @@ export class ApiClient {
     }
   }
 
+  /** POST /api/files?purpose=..., multipart field `file`. */
+  async upload(file: Blob, name: string, purpose: FilePurpose): Promise<Attachment> {
+    const form = new FormData();
+    form.append('file', file, name);
+    const response = await this.#request(`${API_PATHS.files}?purpose=${purpose}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+      body: form,
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    });
+    const result = await this.#parse(uploadResultSchema, response);
+    return result.file;
+  }
+
+  /** Where a file or avatar is downloaded from (same origin, the session cookie authorises it). */
+  fileUrl(fileId: number): string {
+    return `${this.#baseUrl}${API_PATHS.files}/${fileId}`;
+  }
+
   #validate<S extends z.ZodType>(schema: S, body: unknown): z.output<S> {
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -78,7 +103,10 @@ export class ApiClient {
       signal: AbortSignal.timeout(this.#timeoutMs),
     };
     if (body !== undefined) init.body = JSON.stringify(body);
+    return this.#request(path, init);
+  }
 
+  async #request(path: string, init: RequestInit): Promise<Response> {
     let response: Response;
     try {
       response = await this.#fetch(this.#baseUrl + path, init);

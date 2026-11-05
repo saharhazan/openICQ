@@ -1,62 +1,84 @@
-import { describe, expect, it } from 'vitest';
-import { DEFAULT_AWAY_MESSAGES, DEFAULT_PREFERENCES } from '../../src/domain/defaults.ts';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../../src/infrastructure/sqlite/database.ts';
-import { SqliteMessageRepository } from '../../src/infrastructure/sqlite/message-repository.ts';
-import { MIGRATIONS, ensureUinStart, runMigrations } from '../../src/infrastructure/sqlite/migrations.ts';
-import { SqliteUserRepository } from '../../src/infrastructure/sqlite/user-repository.ts';
+import { LegacyDatabaseError, MIGRATIONS, ensureUinStart, runMigrations } from '../../src/infrastructure/sqlite/migrations.ts';
 
-/** A database as the first release left it: schema version 1 with one user and one message. */
-function versionOneDatabase() {
-  const db = openDatabase(':memory:');
-  const first = MIGRATIONS[0];
-  if (first === undefined) throw new Error('migration 1 is missing');
-  db.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)');
-  db.exec(first.sql);
-  db.prepare("INSERT INTO schema_migrations VALUES (1, 'initial schema', '2026-11-01T00:00:00.000Z')").run();
-  ensureUinStart(db, 100000);
-  const oldAwayMessages = JSON.stringify({ away: 'Old away', na: 'Old na', occupied: 'Old occupied', dnd: 'Old dnd' });
-  const oldPreferences = JSON.stringify({ soundsEnabled: false, popupIncoming: false, autoAwayMinutes: 5 });
-  for (const nickname of ['Alice', 'Bob']) {
-    db.prepare(
-      `INSERT INTO users (nickname, password_hash, auth_required, web_aware, hide_email, preferences_json, away_messages_json, created_at)
-       VALUES (:nickname, 'scrypt$x', 0, 0, 0, :preferences, :away, '2026-11-01T00:00:00.000Z')`,
-    ).run({ nickname, preferences: oldPreferences, away: oldAwayMessages });
-  }
-  db.prepare(
-    `INSERT INTO messages (from_uin, to_uin, text, kind, sent_at, delivered_offline)
-     VALUES (100000, 100001, 'from before the upgrade', 'normal', '2026-11-01T00:00:00.000Z', 1)`,
-  ).run();
-  return db;
-}
+let dir: string;
 
-describe('schema migrations', () => {
-  it('upgrade a version 1 database in place: old messages read as not urgent', () => {
-    const db = versionOneDatabase();
-    try {
-      expect(runMigrations(db)).toEqual([2]);
-      expect(runMigrations(db)).toEqual([]);
-      const messages = new SqliteMessageRepository(db);
-      expect(messages.listUnread(100001)).toEqual([expect.objectContaining({ text: 'from before the upgrade', urgent: false })]);
-    } finally {
-      db.close();
-    }
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'openicq-db-'));
+});
+
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
+describe('migrations', () => {
+  it('creates the schema once and is a no-op on the next start', () => {
+    const path = join(dir, 'nested', 'openicq.db');
+    const first = openDatabase(path);
+    expect(runMigrations(first)).toEqual(MIGRATIONS.map((migration) => migration.version));
+    first.close();
+    const second = openDatabase(path);
+    expect(runMigrations(second)).toEqual([]);
+    const tables = second
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+      .all()
+      .map((row) => row.name);
+    expect(tables).toEqual([
+      'blocks',
+      'chat_members',
+      'chats',
+      'contacts',
+      'files',
+      'join_requests',
+      'message_files',
+      'message_hidden',
+      'messages',
+      'openicq_migrations',
+      'reactions',
+      'sessions',
+      'users',
+    ]);
+    expect(second.prepare('PRAGMA journal_mode').get()).toEqual({ journal_mode: 'wal' });
+    second.close();
   });
 
-  it('read stored settings without newer keys by merging them over the defaults', () => {
-    const db = versionOneDatabase();
-    try {
-      runMigrations(db);
-      const alice = new SqliteUserRepository(db).findByUin(100000);
-      expect(alice?.awayMessages).toEqual({
-        away: 'Old away',
-        na: 'Old na',
-        occupied: 'Old occupied',
-        dnd: 'Old dnd',
-        ffc: DEFAULT_AWAY_MESSAGES.ffc,
-      });
-      expect(alice?.preferences).toEqual({ ...DEFAULT_PREFERENCES, soundsEnabled: false, autoAwayMinutes: 5 });
-    } finally {
-      db.close();
-    }
+  it('starts UINs at UIN_START and never moves them back', () => {
+    const db = openDatabase(join(dir, 'uin.db'));
+    runMigrations(db);
+    ensureUinStart(db, 200000);
+    ensureUinStart(db, 100000);
+    const insert = db.prepare(
+      "INSERT INTO users (first_name, password_hash, created_at) VALUES ('A', 'x', '2026-01-01T00:00:00.000Z') RETURNING uin",
+    );
+    expect(insert.get()).toEqual({ uin: 200000 });
+    db.close();
+  });
+
+  it('refuses a database created by the ICQ 2001b server', () => {
+    const db = openDatabase(join(dir, 'legacy.db'));
+    db.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)');
+    expect(() => runMigrations(db)).toThrow(LegacyDatabaseError);
+    db.close();
+  });
+
+  it('enforces unique nicknames and one direct chat per pair', () => {
+    const db = openDatabase(join(dir, 'constraints.db'));
+    runMigrations(db);
+    const user = db.prepare(
+      "INSERT INTO users (first_name, nickname, password_hash, created_at) VALUES ('A', :nickname, 'x', 'now') RETURNING uin",
+    );
+    const first = user.get({ nickname: 'same' });
+    expect(() => user.get({ nickname: 'same' })).toThrow(/UNIQUE/);
+    const second = user.get({ nickname: null });
+    const chat = db.prepare(
+      "INSERT INTO chats (type, pair_low, pair_high, created_at, updated_at) VALUES ('direct', :low, :high, 'now', 'now')",
+    );
+    chat.run({ low: first?.uin ?? 0, high: second?.uin ?? 0 });
+    expect(() => chat.run({ low: first?.uin ?? 0, high: second?.uin ?? 0 })).toThrow(/UNIQUE/);
+    db.close();
   });
 });

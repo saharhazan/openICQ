@@ -1,70 +1,52 @@
-/** The ICQ flower in the system tray (the menu bar on macOS), drawn by the page. */
-import { app, Menu, nativeImage, Tray, type MenuItemConstructorOptions, type NativeImage } from 'electron';
-import { TRAY_ACTIVATE, type TrayMenuItem, type TrayState } from '@openicq/desktop-bridge';
+/** The openICQ flower in the system tray (the menu bar on macOS), with an unread variant. */
+import { Menu, Tray, nativeImage, type NativeImage } from 'electron';
 
-/** The spinning flower needs about 8 frames a second; anything faster is not from the client. */
-const MIN_UPDATE_INTERVAL_MS = 100;
-/** The page draws 16 and 32 px flowers. */
-const MAX_ICON_PX = 64;
+export interface AppTrayActions {
+  open(): void;
+  settings(): void;
+  connectionSettings(): void;
+  quit(): void;
+}
+
+export interface TrayIcons {
+  readonly normal: string;
+  readonly unread: string;
+}
 
 export class AppTray {
   readonly #tray: Tray;
-  readonly #onCommand: (command: string) => void;
-  #lastUpdate = 0;
-  #pending: TrayState | null = null;
-  #timer: ReturnType<typeof setTimeout> | null = null;
+  readonly #normal: NativeImage;
+  readonly #unreadIcon: NativeImage;
+  #unread = 0;
 
-  constructor(initialIcon: NativeImage, onCommand: (command: string) => void) {
-    this.#onCommand = onCommand;
-    this.#tray = new Tray(initialIcon);
+  constructor(icons: TrayIcons, actions: AppTrayActions) {
+    // Files named name@2x.png next to name.png give the high-DPI version automatically.
+    this.#normal = nativeImage.createFromPath(icons.normal);
+    this.#unreadIcon = nativeImage.createFromPath(icons.unread);
+    this.#tray = new Tray(this.#normal);
     this.#tray.setToolTip('openICQ');
-    // Windows and Linux: a click opens ICQ; the right button shows the menu. macOS always shows the menu.
-    this.#tray.on('click', () => onCommand(TRAY_ACTIVATE));
+    this.#tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Open', click: () => actions.open() },
+        { label: 'Settings', click: () => actions.settings() },
+        { type: 'separator' },
+        { label: 'Connection Settings...', click: () => actions.connectionSettings() },
+        { type: 'separator' },
+        { label: 'Quit openICQ', click: () => actions.quit() },
+      ]),
+    );
+    // Windows and Linux: a click opens the window. macOS always shows the menu.
+    this.#tray.on('click', () => actions.open());
   }
 
-  /** Coalesces bursts: the latest state wins, applied at most every MIN_UPDATE_INTERVAL_MS. */
-  update(state: TrayState): void {
-    this.#pending = state;
-    if (this.#timer !== null) return;
-    const wait = Math.max(0, this.#lastUpdate + MIN_UPDATE_INTERVAL_MS - Date.now());
-    this.#timer = setTimeout(() => {
-      this.#timer = null;
-      const next = this.#pending;
-      this.#pending = null;
-      this.#lastUpdate = Date.now();
-      if (next && !this.#tray.isDestroyed()) this.#apply(next);
-    }, wait);
+  setUnread(count: number): void {
+    if (count === this.#unread || this.#tray.isDestroyed()) return;
+    this.#unread = count;
+    this.#tray.setImage(count > 0 ? this.#unreadIcon : this.#normal);
+    this.#tray.setToolTip(count > 0 ? `openICQ - ${count} unread` : 'openICQ');
   }
 
   destroy(): void {
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
-    this.#tray.destroy();
-  }
-
-  #apply(state: TrayState): void {
-    const icon = nativeImage.createFromDataURL(state.icon.x1);
-    const large = nativeImage.createFromDataURL(state.icon.x2);
-    const fits = (image: NativeImage) => {
-      const { width, height } = image.getSize();
-      return !image.isEmpty() && width <= MAX_ICON_PX && height <= MAX_ICON_PX;
-    };
-    if (!fits(icon) || !fits(large)) return;
-    icon.addRepresentation({ scaleFactor: 2, buffer: large.toPNG() });
-    this.#tray.setImage(icon);
-    this.#tray.setToolTip(state.tooltip);
-    this.#tray.setContextMenu(Menu.buildFromTemplate(state.menu.map((item) => this.#menuItem(item))));
-    app.setBadgeCount(state.badge);
-  }
-
-  #menuItem(item: TrayMenuItem): MenuItemConstructorOptions {
-    if (item.type === 'separator') return { type: 'separator' };
-    return {
-      label: item.label,
-      enabled: item.enabled,
-      type: item.checked ? 'checkbox' : 'normal',
-      checked: item.checked,
-      click: () => this.#onCommand(item.id),
-    };
+    if (!this.#tray.isDestroyed()) this.#tray.destroy();
   }
 }

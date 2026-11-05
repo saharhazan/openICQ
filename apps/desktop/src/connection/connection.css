@@ -1,72 +1,172 @@
+/* ICQ New dialog look: Green theme tokens from docs/research/icq-new-ui-spec.json. */
+@font-face {
+  font-family: 'Source Sans 3';
+  font-weight: 400;
+  src: url(source-sans-3-latin-400-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3';
+  font-weight: 600;
+  src: url(source-sans-3-latin-600-normal.woff2) format('woff2');
+}
+
+:root {
+  --primary: #21d86a;
+  --primary-hover: #1ec360;
+  --primary-active: #16a14d;
+  --text: #111111;
+  --secondary-text: #838690;
+  --line: #eceef3;
+  --attention: #f83e33;
+  color-scheme: light;
+}
+
 html,
 body {
   margin: 0;
-  height: 100%;
-  overflow: hidden;
-  background: #c0c0c0;
-  font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
-  font-size: 11px;
-  -webkit-font-smoothing: none;
-  user-select: none;
+  background: #ffffff;
+  color: var(--text);
+  font: 15px/1.35 'Source Sans 3', system-ui, sans-serif;
 }
 
-.window {
-  height: 100%;
-  box-sizing: border-box;
-  margin: 0;
+form {
+  padding: 20px 24px 20px;
 }
 
-.title-bar {
-  -webkit-app-region: drag;
-  app-region: drag;
-}
-
-.title-bar-controls button {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-}
-
-.window-body p {
-  margin: 4px 0 8px;
-}
-
-fieldset {
-  padding: 6px 10px 8px;
-}
-
-.field-row {
-  margin: 4px 0;
-}
-
-.indent {
-  margin-left: 22px;
-}
-
-.indent label {
-  min-width: 46px;
-}
-
-#server {
-  width: 200px;
+h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .hint {
-  color: #000080;
+  margin: 0 0 16px;
+  color: var(--secondary-text);
+}
+
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.choice strong {
+  display: block;
+  font-weight: 600;
+}
+
+.choice small {
+  color: var(--secondary-text);
+  font-size: 13px;
+}
+
+input[type='radio'],
+input[type='checkbox'] {
+  accent-color: var(--primary);
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+
+.options {
+  margin: 0 0 4px 30px;
+}
+
+.field {
+  display: block;
+  margin: 4px 0 10px;
+}
+
+.field span {
+  display: block;
+  color: var(--secondary-text);
+  font-size: 13px;
+}
+
+.field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+  font: inherit;
+  outline: none;
+  background: transparent;
+}
+
+.field input:focus {
+  border-bottom-color: var(--primary);
+}
+
+.field input:disabled {
+  color: var(--secondary-text);
+}
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.note {
+  color: var(--primary-active);
+  font-size: 13px;
   user-select: text;
 }
 
 .problem {
-  color: #800000;
+  color: var(--attention);
   white-space: pre-line;
 }
 
 .buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 button {
-  min-width: 75px;
+  min-width: 80px;
+  height: 32px;
+  border-radius: 16px;
+  padding: 0 18px;
+  font: 600 14px 'Source Sans 3', system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.primary:hover {
+  background: var(--primary-hover);
+}
+
+.primary:active {
+  background: var(--primary-active);
+}
+
+.primary:disabled {
+  opacity: 0.6;
+}
+
+.secondary {
+  border: 1px solid #b7bcc9;
+  background: #ffffff;
+  color: var(--text);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px #c8f9d4;
+}
+
+.field input:focus-visible {
+  box-shadow: none;
 }

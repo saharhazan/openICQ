@@ -1,11 +1,11 @@
 /**
- * Connection lifecycle: which connection is live for a UIN, and what happens
- * when one is replaced, signed out, released or closed for shutdown.
- * Presence is published here, the moment a user really goes offline.
+ * Connection lifecycle: starting a connection, releasing it, closing the
+ * connections of ended sessions and closing everything at shutdown.
+ * Presence is published here, when a user's first connection starts and when the last one closes.
  */
-import { CLOSE_CODES, type Uin } from '@openicq/protocol';
+import { CLOSE_CODES } from '@openicq/protocol';
 import type { PresenceService } from '../../application/presence-service.ts';
-import type { ClientConnection } from './connection.ts';
+import type { ClientConnection, SessionClosedReason } from './connection.ts';
 import type { ConnectionRegistry } from './connection-registry.ts';
 
 /** Standard "going away" close code. */
@@ -22,30 +22,32 @@ export class ConnectionLifecycle {
     this.presence = presence;
   }
 
-  /** Makes the connection live. The one it replaces is kicked without an offline step, so watchers see no flicker. */
+  /** Starts the connection; a new sign-in never disconnects anyone (plan rule 2). Safe to call twice. */
   activate(connection: ClientConnection): void {
-    this.connections.activate(connection)?.kick('other_location', CLOSE_CODES.otherLocation);
-    connection.markStarted();
+    if (connection.started) return;
+    if (this.connections.activate(connection)) this.presence.cameOnline(connection.uin);
   }
 
-  /** Forgets the connection and publishes the disconnect if it was the live one. Safe to call twice. */
+  /** Forgets the connection and publishes the disconnect if it was the user's last. Safe to call twice. */
   release(connection: ClientConnection): void {
     if (!this.connections.release(connection)) return;
     try {
-      this.presence.disconnect(connection.uin);
+      this.presence.wentOffline(connection.uin);
     } catch (error) {
-      connection.log.error({ err: error }, 'failed to publish disconnect');
+      connection.log.error({ err: error }, 'failed to publish going offline');
     }
   }
 
-  /** Sign-out: every connection of the revoked session is kicked and goes offline at once. */
-  endSession(tokenHash: string): void {
-    this.signOutWhere((connection) => connection.tokenHash === tokenHash);
-  }
-
-  /** Password change: every other session of the user is kicked. */
-  endOtherSessions(uin: Uin, keepTokenHash: string): void {
-    this.signOutWhere((connection) => connection.uin === uin && connection.tokenHash !== keepTokenHash);
+  /**
+   * Sessions that were revoked: their connections get `session.closed` and are
+   * closed with 4002 (closed from "Session List") or 4003 (signed out).
+   */
+  closeSessions(sessionIds: readonly number[], reason: SessionClosedReason): void {
+    const code = reason === 'signed_out' ? CLOSE_CODES.signedOut : CLOSE_CODES.sessionClosed;
+    for (const connection of this.connections.ofSessions(sessionIds)) {
+      connection.endSession(reason, code);
+      this.release(connection);
+    }
   }
 
   /** Server shutdown: publishes every disconnect while the database is open, then closes the sockets. */
@@ -60,13 +62,5 @@ export class ConnectionLifecycle {
       for (const connection of open) connection.terminate();
     }, SHUTDOWN_GRACE_MS);
     timer.unref();
-  }
-
-  private signOutWhere(matches: (connection: ClientConnection) => boolean): void {
-    for (const connection of this.connections.all()) {
-      if (!matches(connection)) continue;
-      connection.kick('signed_out', CLOSE_CODES.signedOut);
-      this.release(connection);
-    }
   }
 }

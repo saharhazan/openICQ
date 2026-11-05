@@ -1,71 +1,84 @@
-import type { ChatMessage, Contact, Profile, SessionSnapshot, Settings, SystemNotice } from '@openicq/protocol';
+/** Factories for protocol objects in tests. */
+import type { Chat, GroupInfo, Me, Message, SessionSnapshot, User } from '@openicq/protocol';
 
-export const SELF = 100001;
+export const ME = 100001;
+export const NOW = new Date('2026-11-05T12:00:00.000Z');
 
-export function contact(uin: number, nickname: string, extra: Partial<Contact> = {}): Contact {
-  return { uin, nickname, status: 'offline', awaitingAuth: false, ...extra };
+export function me(extra: Partial<Me> = {}): Me {
+  return { uin: ME, nickname: 'sahar', firstName: 'Sahar', lastName: 'H', about: '', avatarFileId: null, email: 'me@example.com', ...extra };
 }
 
-let nextMessageId = 1;
-export function message(from: number, to: number, text: string, extra: Partial<ChatMessage> = {}): ChatMessage {
+export function user(uin: number, firstName: string, extra: Partial<User> = {}): User {
   return {
-    id: nextMessageId++,
-    from,
-    to,
-    text,
-    kind: 'normal',
-    sentAt: '2026-11-04T20:00:00.000Z',
-    deliveredOffline: false,
-    urgent: false,
-    read: false,
+    uin,
+    nickname: null,
+    firstName,
+    lastName: '',
+    about: '',
+    avatarFileId: null,
+    presence: { online: false, lastSeen: null },
+    isContact: true,
+    blocked: false,
     ...extra,
   };
 }
 
-export function notice(id: number, from: number, extra: Partial<SystemNotice> = {}): SystemNotice {
-  return { id, kind: 'auth_request', from, fromNickname: `user${from}`, reason: '', createdAt: '2026-11-04T20:00:00.000Z', ...extra };
-}
-
-export function profile(uin: number, nickname: string): Profile {
+let nextId = 1000;
+export function message(chatId: number, sender: number, text: string, extra: Partial<Message> = {}): Message {
+  nextId += 1;
   return {
-    uin,
-    nickname,
-    firstName: '',
-    lastName: '',
-    email: '',
-    gender: 'unspecified',
-    age: null,
-    country: '',
-    city: '',
-    homepage: '',
-    about: '',
-    authRequired: true,
-    webAware: false,
+    id: nextId,
+    chatId,
+    sender,
+    clientId: null,
+    text,
+    event: null,
+    replyTo: null,
+    forwardedFrom: null,
+    attachments: [],
+    reactions: [],
+    editedAt: null,
+    deleted: false,
+    sentAt: '2026-11-05T11:00:00.000Z',
+    ...extra,
   };
 }
 
-export function settings(extra: Partial<Settings> = {}): Settings {
+export function group(extra: Partial<GroupInfo> = {}): GroupInfo {
   return {
-    authRequired: true,
-    webAware: false,
-    hideEmail: false,
-    preferences: { soundsEnabled: true, popupIncoming: false, autoAwayMinutes: 10, autoNaMinutes: 20 },
-    awayMessages: { away: 'I am away', na: 'Not available', occupied: 'Busy', dnd: 'Do not disturb', ffc: 'Chat with me' },
+    about: '',
+    rules: '',
+    joinWithApproval: false,
+    public: false,
+    membersCount: 3,
+    myRole: 'member',
+    inviteToken: null,
+    pendingRequests: 0,
+    ...extra,
+  };
+}
+
+export function chat(id: number, extra: Partial<Chat> = {}): Chat {
+  return {
+    id,
+    type: 'direct',
+    title: '',
+    peer: null,
+    avatarFileId: null,
+    group: null,
+    lastMessage: null,
+    unread: 0,
+    markedUnread: false,
+    lastReadId: 0,
+    peerDeliveredId: 0,
+    peerReadId: 0,
+    pinned: false,
+    muted: false,
+    updatedAt: '2026-11-05T11:00:00.000Z',
     ...extra,
   };
 }
 
 export function snapshot(extra: Partial<SessionSnapshot> = {}): SessionSnapshot {
-  return {
-    self: profile(SELF, 'Me'),
-    settings: settings(),
-    status: 'online',
-    contacts: [],
-    notices: [],
-    unread: [],
-    notInList: [],
-    ignored: [],
-    serverTime: '2026-11-04T20:00:00.000Z',
-    ...extra,
-  };
+  return { me: me(), settings: { groupInvites: 'everybody' }, chats: [], users: [], contacts: [], serverTime: NOW.toISOString(), ...extra };
 }

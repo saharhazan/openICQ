@@ -1,281 +1,312 @@
 /**
- * Domain vocabulary shared by the ICQ client and server.
+ * Domain vocabulary shared by the openICQ client and server: the ICQ New
+ * (2020-2024) model of users, chats, messages, groups and files.
  *
- * Every value that crosses the network is described here with a zod schema,
- * so both sides validate the same rules at their boundary.
+ * Values come from the ICQ New research (docs/research/icq-new-findings.md):
+ * nickname rules, the six default reactions, roles, limits. Where the original
+ * left something open (edit time limit, file size) the choice is documented here.
  */
 import { z } from 'zod';
 
-/** Field length limits. Shared so the UI can enforce them before the server does. */
-export const LIMITS = {
-  nickname: 20,
-  personName: 32,
-  email: 64,
-  passwordMin: 6,
-  passwordMax: 64,
-  /** ICQ 2001b: "Message exceeds server limit (450 chars)." */
-  messageText: 450,
-  /** ICQ 2000b/2001b: RealAwayMessage range 0..500. */
-  awayMessage: 500,
-  reason: 500,
-  about: 1000,
-  city: 40,
-  country: 40,
-  homepage: 120,
-  searchResults: 50,
-  historyPageMax: 100,
-  historyPageDefault: 50,
-} as const;
-
-export const UIN_MIN = 10000;
+export const UIN_MIN = 10_000;
 export const UIN_MAX = 2_147_483_647;
 
+/** An ICQ number. Still the account id in ICQ New, shown under the profile and usable to sign in. */
 export const uinSchema = z.number().int().min(UIN_MIN).max(UIN_MAX);
 export type Uin = z.infer<typeof uinSchema>;
 
-// These patterns exist to match control characters, which is what no-control-regex forbids.
-/** Control characters except tab, line feed and carriage return. */
-// eslint-disable-next-line no-control-regex
-const FORBIDDEN_CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
-/** Control characters including line breaks (single-line fields). */
-// eslint-disable-next-line no-control-regex
-const FORBIDDEN_SINGLE_LINE_CHARS = /[\u0000-\u001f\u007f]/;
+/** Ids of chats, messages, files and sessions. */
+export const idSchema = z.number().int().positive();
+export type Id = z.infer<typeof idSchema>;
 
-/** A single-line, trimmed text field such as a nickname or a city. */
+export const isoDateSchema = z.iso.datetime();
+
+export const LIMITS = {
+  personName: 64,
+  /** "About me": up to 120 characters (ICQ New profile). */
+  about: 120,
+  /** Nickname length, server-adjustable in the original; these are its defaults. */
+  nicknameMin: 5,
+  nicknameMax: 30,
+  email: 254,
+  passwordMin: 6,
+  passwordMax: 64,
+  /** The original kept drafts up to 10,000 characters; messages share the limit. */
+  messageText: 10_000,
+  groupName: 64,
+  groupAbout: 1_000,
+  groupRules: 1_000,
+  searchQueryMin: 2,
+  searchQueryMax: 64,
+  searchResults: 50,
+  historyPageMax: 100,
+  historyPageDefault: 50,
+  attachmentsPerMessage: 10,
+  forwardMessages: 100,
+  deleteMessages: 100,
+  membersPerRequest: 100,
+  groupMembersMax: 25_000,
+  /** Not known for the original; 100 MB, configurable on the server. */
+  fileMaxBytes: 100 * 1024 * 1024,
+  fileName: 255,
+} as const;
+
+// Control characters: C0 controls except tab and newline (multi-line), and DEL.
+// eslint-disable-next-line no-control-regex -- matching control characters is the point of this pattern
+const SINGLE_LINE_FORBIDDEN = /[\u0000-\u001f\u007f]/;
+// eslint-disable-next-line no-control-regex -- matching control characters is the point of this pattern
+const MULTI_LINE_FORBIDDEN = /[\u0000-\u0008\u000b-\u001f\u007f]/;
+
+/** Trimmed single-line text without control characters. */
 export function singleLine(max: number) {
   return z
     .string()
     .trim()
     .max(max)
-    .refine((value) => !FORBIDDEN_SINGLE_LINE_CHARS.test(value), 'Contains control characters');
+    .refine((value) => !SINGLE_LINE_FORBIDDEN.test(value), 'Control characters are not allowed');
 }
 
-/** A multi-line text field such as a message or an away message. */
+/** Multi-line text (tabs and newlines allowed) without other control characters. Not trimmed. */
 export function multiLine(max: number) {
   return z
     .string()
     .max(max)
-    .refine((value) => !FORBIDDEN_CONTROL_CHARS.test(value), 'Contains control characters');
+    .refine((value) => !MULTI_LINE_FORBIDDEN.test(value), 'Control characters are not allowed');
 }
 
 /**
- * ICQ statuses. `invisible` is the classic "Privacy (Invisible)" mode and
- * `offline` is never set by a user directly: it means "not connected".
+ * ICQ New nickname rules: 5 to 30 characters, a-z, 0-9, dot and underscore,
+ * starting with a Latin letter. Stored and compared in lower case.
  */
-export const STATUSES = ['online', 'ffc', 'away', 'na', 'occupied', 'dnd', 'invisible', 'offline'] as const;
-export const statusSchema = z.enum(STATUSES);
-export type Status = z.infer<typeof statusSchema>;
-
-export const settableStatusSchema = z.enum(['online', 'ffc', 'away', 'na', 'occupied', 'dnd', 'invisible']);
-export type SettableStatus = z.infer<typeof settableStatusSchema>;
-
-/** Statuses that carry an away message (auto-response). */
-export const AWAY_STATUSES = ['away', 'na', 'occupied', 'dnd'] as const;
-export type AwayStatus = (typeof AWAY_STATUSES)[number];
-export const awayStatusSchema = z.enum(AWAY_STATUSES);
-
-export function isAwayStatus(status: Status): status is AwayStatus {
-  return (AWAY_STATUSES as readonly Status[]).includes(status);
-}
-
-/**
- * Statuses that carry a status message: the four away-like ones plus
- * Free For Chat ("Chat Mode Message"). Choosing one of them opens the
- * "Change / Confirm ... Message" dialog, and others can read the message.
- */
-export const STATUS_MESSAGE_STATUSES = ['away', 'na', 'occupied', 'dnd', 'ffc'] as const;
-export type StatusMessageStatus = (typeof STATUS_MESSAGE_STATUSES)[number];
-
-export function hasStatusMessage(status: Status): status is StatusMessageStatus {
-  return (STATUS_MESSAGE_STATUSES as readonly Status[]).includes(status);
-}
-
-/** Statuses in which normal (non-urgent) messages arrive silently, "to the Contact List". */
-export const SILENT_DELIVERY_STATUSES = ['occupied', 'dnd'] as const;
-
-export const genderSchema = z.enum(['unspecified', 'female', 'male']);
-export type Gender = z.infer<typeof genderSchema>;
-
-const emailOrEmpty = z
+export const NICKNAME_PATTERN = /^[a-z][a-z0-9._]*$/;
+export const nicknameSchema = z
   .string()
   .trim()
-  .max(LIMITS.email)
-  .refine((value) => value === '' || z.email().safeParse(value).success, 'Invalid email address');
+  .toLowerCase()
+  .min(LIMITS.nicknameMin, `Nickname must be at least ${LIMITS.nicknameMin} characters`)
+  .max(LIMITS.nicknameMax, `Nickname must be at most ${LIMITS.nicknameMax} characters`)
+  .regex(NICKNAME_PATTERN, 'Use a-z, 0-9, dot and underscore, starting with a letter');
 
-const homepageOrEmpty = z
-  .string()
-  .trim()
-  .max(LIMITS.homepage)
-  .refine((value) => value === '' || /^https?:\/\/[^\s]+$/i.test(value), 'Homepage must start with http:// or https://');
+export const emailSchema = z.string().trim().toLowerCase().max(LIMITS.email).pipe(z.email());
 
-/** Public user details, as shown in "User Details" and search results. */
-export const profileSchema = z.object({
+/** Last seen: "Online", "Seen 5 minutes ago", "Have never been here". */
+export const presenceSchema = z.object({
+  online: z.boolean(),
+  lastSeen: isoDateSchema.nullable(),
+});
+export type Presence = z.infer<typeof presenceSchema>;
+
+/** Another user as the viewer sees them. */
+export const userSchema = z.object({
   uin: uinSchema,
-  nickname: z.string(),
+  nickname: z.string().nullable(),
   firstName: z.string(),
   lastName: z.string(),
-  /** Empty when the owner chose to hide it. */
-  email: z.string(),
-  gender: genderSchema,
-  age: z.number().int().min(0).max(150).nullable(),
-  country: z.string(),
-  city: z.string(),
-  homepage: z.string(),
   about: z.string(),
-  authRequired: z.boolean(),
-  webAware: z.boolean(),
+  avatarFileId: idSchema.nullable(),
+  presence: presenceSchema,
+  /** In the viewer's contacts. */
+  isContact: z.boolean(),
+  /** The viewer blocked this user. */
+  blocked: z.boolean(),
 });
-export type Profile = z.infer<typeof profileSchema>;
+export type User = z.infer<typeof userSchema>;
 
-/** The fields a user may edit on their own details. */
+/** The signed-in user's own profile. */
+export const meSchema = z.object({
+  uin: uinSchema,
+  nickname: z.string().nullable(),
+  firstName: z.string(),
+  lastName: z.string(),
+  about: z.string(),
+  avatarFileId: idSchema.nullable(),
+  email: z.string(),
+});
+export type Me = z.infer<typeof meSchema>;
+
 export const profileUpdateSchema = z
   .object({
-    nickname: singleLine(LIMITS.nickname).min(1),
-    firstName: singleLine(LIMITS.personName),
+    firstName: singleLine(LIMITS.personName).min(1, 'First name is required'),
     lastName: singleLine(LIMITS.personName),
-    email: emailOrEmpty,
-    gender: genderSchema,
-    age: z.number().int().min(0).max(150).nullable(),
-    country: singleLine(LIMITS.country),
-    city: singleLine(LIMITS.city),
-    homepage: homepageOrEmpty,
     about: multiLine(LIMITS.about),
+    /** Null removes the nickname. */
+    nickname: nicknameSchema.nullable(),
+    avatarFileId: idSchema.nullable(),
   })
-  .partial();
+  .partial()
+  .strict();
 export type ProfileUpdate = z.infer<typeof profileUpdateSchema>;
 
-/** Client-side behaviour preferences, stored on the server so they follow the user. */
-export const preferencesSchema = z.object({
-  soundsEnabled: z.boolean(),
-  /** Open the message window automatically instead of blinking the contact. */
-  popupIncoming: z.boolean(),
-  /** Minutes of inactivity before switching to Away. 0 disables. */
-  autoAwayMinutes: z.number().int().min(0).max(240),
-  /** Minutes in Away mode before switching to N/A ("minutes of Away mode"). 0 disables. */
-  autoNaMinutes: z.number().int().min(0).max(240),
+/** "Who can add me to groups" (ICQ New Privacy). */
+export const GROUP_INVITE_POLICIES = ['everybody', 'contacts', 'nobody'] as const;
+export const groupInvitePolicySchema = z.enum(GROUP_INVITE_POLICIES);
+export type GroupInvitePolicy = z.infer<typeof groupInvitePolicySchema>;
+
+/** Settings kept on the server (the rest are per device, like in the original desktop app). */
+export const accountSettingsSchema = z.object({
+  groupInvites: groupInvitePolicySchema,
 });
-export type Preferences = z.infer<typeof preferencesSchema>;
+export type AccountSettings = z.infer<typeof accountSettingsSchema>;
 
-/** Stored status message per status that carries one. */
-export const awayMessagesSchema = z.object({
-  away: z.string(),
-  na: z.string(),
-  occupied: z.string(),
-  dnd: z.string(),
-  ffc: z.string(),
-});
-export type AwayMessages = z.infer<typeof awayMessagesSchema>;
+/** The six default ICQ New reactions: Like, Super, Funny, Oops, Sad, Scandalous. */
+export const REACTIONS = ['like', 'super', 'funny', 'oops', 'sad', 'scandalous'] as const;
+export const reactionSchema = z.enum(REACTIONS);
+export type Reaction = z.infer<typeof reactionSchema>;
 
-/** Private settings of the signed-in user. */
-export const settingsSchema = z.object({
-  authRequired: z.boolean(),
-  webAware: z.boolean(),
-  hideEmail: z.boolean(),
-  preferences: preferencesSchema,
-  awayMessages: awayMessagesSchema,
-});
-export type Settings = z.infer<typeof settingsSchema>;
+export const CHAT_TYPES = ['direct', 'group', 'favorites'] as const;
+export const chatTypeSchema = z.enum(CHAT_TYPES);
+export type ChatType = z.infer<typeof chatTypeSchema>;
 
-export const settingsUpdateSchema = z
-  .object({
-    authRequired: z.boolean(),
-    webAware: z.boolean(),
-    hideEmail: z.boolean(),
-    preferences: preferencesSchema.partial(),
-    awayMessages: z
-      .object({
-        away: multiLine(LIMITS.awayMessage),
-        na: multiLine(LIMITS.awayMessage),
-        occupied: multiLine(LIMITS.awayMessage),
-        dnd: multiLine(LIMITS.awayMessage),
-        ffc: multiLine(LIMITS.awayMessage),
-      })
-      .partial(),
-  })
-  .partial();
-export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;
+/** Server roles. The UI shows Creator, Admin, Read only, and nothing for members. */
+export const MEMBER_ROLES = ['creator', 'admin', 'member', 'readonly'] as const;
+export const memberRoleSchema = z.enum(MEMBER_ROLES);
+export type MemberRole = z.infer<typeof memberRoleSchema>;
+/** Roles an admin can give with "Assign admin role" and "Ban to write". */
+export const ASSIGNABLE_ROLES = ['admin', 'member', 'readonly'] as const;
+export const assignableRoleSchema = z.enum(ASSIGNABLE_ROLES);
 
-/** One entry of the signed-in user's contact list, as the owner sees it. */
-export const contactSchema = z.object({
+export const memberSchema = z.object({
   uin: uinSchema,
-  /** The owner's local alias for the contact (defaults to the contact's nickname). */
-  nickname: z.string(),
-  /** Status as visible to the owner. `offline` while authorization is pending. */
-  status: statusSchema,
-  /** True until the contact grants authorization. */
-  awaitingAuth: z.boolean(),
+  role: memberRoleSchema,
+  joinedAt: isoDateSchema,
 });
-export type Contact = z.infer<typeof contactSchema>;
+export type Member = z.infer<typeof memberSchema>;
 
-export const messageKindSchema = z.enum(['normal', 'auto']);
-export type MessageKind = z.infer<typeof messageKindSchema>;
+export const ATTACHMENT_KINDS = ['image', 'file'] as const;
+export const attachmentSchema = z.object({
+  fileId: idSchema,
+  name: z.string(),
+  mime: z.string(),
+  size: z.number().int().nonnegative(),
+  kind: z.enum(ATTACHMENT_KINDS),
+  /** Images only. */
+  width: z.number().int().positive().nullable(),
+  height: z.number().int().positive().nullable(),
+});
+export type Attachment = z.infer<typeof attachmentSchema>;
 
-export const chatMessageSchema = z.object({
-  id: z.number().int().positive(),
-  from: uinSchema,
-  to: uinSchema,
+/** Group service messages ("chat_event" in the original). */
+export const CHAT_EVENT_TYPES = [
+  'created',
+  'member_added',
+  'member_removed',
+  'member_left',
+  'joined_by_link',
+  'role_changed',
+  'renamed',
+  'about_changed',
+  'rules_changed',
+  'avatar_changed',
+  'link_changed',
+  'approval_changed',
+] as const;
+export const chatEventSchema = z.object({
+  type: z.enum(CHAT_EVENT_TYPES),
+  actor: uinSchema,
+  target: uinSchema.nullable(),
+  /** New name, new role and so on. */
+  value: z.string().nullable(),
+});
+export type ChatEvent = z.infer<typeof chatEventSchema>;
+
+export const replyPreviewSchema = z.object({
+  messageId: idSchema,
+  sender: uinSchema,
+  /** First characters of the quoted text; empty for a deleted message. */
   text: z.string(),
-  kind: messageKindSchema,
-  /** ISO 8601 timestamp set by the server. */
-  sentAt: z.string(),
-  /** True when the message was stored while the recipient was offline. */
-  deliveredOffline: z.boolean(),
-  /**
-   * "Send Urgent" to an Occupied user. Non-urgent messages to Occupied/DND
-   * users are "sent to the Contact List": shown without sound or pop-up.
-   */
-  urgent: z.boolean(),
-  read: z.boolean(),
+  hasAttachments: z.boolean(),
+  deleted: z.boolean(),
 });
-export type ChatMessage = z.infer<typeof chatMessageSchema>;
+export type ReplyPreview = z.infer<typeof replyPreviewSchema>;
 
-export const NOTICE_KINDS = ['auth_request', 'auth_granted', 'auth_denied', 'added_you'] as const;
-export const noticeKindSchema = z.enum(NOTICE_KINDS);
-export type NoticeKind = z.infer<typeof noticeKindSchema>;
-
-/** A "System Notice": authorization traffic and "you were added" events. */
-export const systemNoticeSchema = z.object({
-  id: z.number().int().positive(),
-  kind: noticeKindSchema,
-  from: uinSchema,
-  fromNickname: z.string(),
-  reason: z.string(),
-  createdAt: z.string(),
+export const reactionCountSchema = z.object({
+  reaction: reactionSchema,
+  count: z.number().int().positive(),
+  /** The viewer chose this reaction. */
+  mine: z.boolean(),
 });
-export type SystemNotice = z.infer<typeof systemNoticeSchema>;
+export type ReactionCount = z.infer<typeof reactionCountSchema>;
 
-/** A sender of unread messages who is not in the owner's contact list. */
-export const notInListEntrySchema = z.object({
+export const messageSchema = z.object({
+  id: idSchema,
+  chatId: idSchema,
+  sender: uinSchema,
+  /** Echo of the sender's client id, so the sending client can match its pending bubble. */
+  clientId: z.string().nullable(),
+  text: z.string(),
+  /** Set for group service messages; text is then empty. */
+  event: chatEventSchema.nullable(),
+  replyTo: replyPreviewSchema.nullable(),
+  /** "Forwarded from %1". */
+  forwardedFrom: uinSchema.nullable(),
+  attachments: z.array(attachmentSchema),
+  reactions: z.array(reactionCountSchema),
+  editedAt: isoDateSchema.nullable(),
+  /** "Delete for all": the bubble stays as a tombstone without content. */
+  deleted: z.boolean(),
+  sentAt: isoDateSchema,
+});
+export type Message = z.infer<typeof messageSchema>;
+
+export const groupInfoSchema = z.object({
+  about: z.string(),
+  rules: z.string(),
+  /** "Join with Approval". */
+  joinWithApproval: z.boolean(),
+  /** "Public chat": can be found in the search. */
+  public: z.boolean(),
+  membersCount: z.number().int().nonnegative(),
+  myRole: memberRoleSchema,
+  /** Invite link token; admins only, null otherwise. */
+  inviteToken: z.string().nullable(),
+  /** Join requests waiting for approval; admins only, 0 otherwise. */
+  pendingRequests: z.number().int().nonnegative(),
+});
+export type GroupInfo = z.infer<typeof groupInfoSchema>;
+
+/** One row of the chat list, with what the viewer needs to draw it. */
+export const chatSchema = z.object({
+  id: idSchema,
+  type: chatTypeSchema,
+  /** Group name; empty for direct chats and Favorites (the client names those). */
+  title: z.string(),
+  /** The other user of a direct chat. */
+  peer: uinSchema.nullable(),
+  avatarFileId: idSchema.nullable(),
+  group: groupInfoSchema.nullable(),
+  lastMessage: messageSchema.nullable(),
+  unread: z.number().int().nonnegative(),
+  /** "Mark as unread". Cleared by reading. */
+  markedUnread: z.boolean(),
+  /** Highest message id the viewer has read. */
+  lastReadId: z.number().int().nonnegative(),
+  /** Direct chats: how far the peer has received and read. 0 otherwise. */
+  peerDeliveredId: z.number().int().nonnegative(),
+  peerReadId: z.number().int().nonnegative(),
+  pinned: z.boolean(),
+  muted: z.boolean(),
+  /** Last activity, for ordering. */
+  updatedAt: isoDateSchema,
+});
+export type Chat = z.infer<typeof chatSchema>;
+
+/** Where each member's read and delivery marks are (read heads under messages). */
+export const readMarkSchema = z.object({
   uin: uinSchema,
-  nickname: z.string(),
+  lastReadId: z.number().int().nonnegative(),
+  lastDeliveredId: z.number().int().nonnegative(),
 });
-export type NotInListEntry = z.infer<typeof notInListEntrySchema>;
+export type ReadMark = z.infer<typeof readMarkSchema>;
 
-export const searchQuerySchema = z.discriminatedUnion('by', [
-  z.object({ by: z.literal('uin'), uin: uinSchema }),
-  z.object({ by: z.literal('email'), email: z.string().trim().min(3).max(LIMITS.email) }),
-  z
-    .object({
-      by: z.literal('details'),
-      nickname: singleLine(LIMITS.nickname).default(''),
-      firstName: singleLine(LIMITS.personName).default(''),
-      lastName: singleLine(LIMITS.personName).default(''),
-    })
-    .refine((q) => q.nickname !== '' || q.firstName !== '' || q.lastName !== '', 'Enter at least one search field'),
-]);
-export type SearchQuery = z.infer<typeof searchQuerySchema>;
-
-export const searchResultSchema = z.object({
-  uin: uinSchema,
-  nickname: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  email: z.string(),
-  authRequired: z.boolean(),
-  /** Known only when the user is "Web Aware"; null otherwise. */
-  online: z.boolean().nullable(),
+export const sessionEntrySchema = z.object({
+  id: idSchema,
+  current: z.boolean(),
+  /** A short device description from the user agent ("Chrome on macOS"). */
+  device: z.string(),
+  createdAt: isoDateSchema,
+  lastSeenAt: isoDateSchema,
 });
-export type SearchResult = z.infer<typeof searchResultSchema>;
+export type SessionEntry = z.infer<typeof sessionEntrySchema>;
 
 export const ERROR_CODES = [
   'bad_request',
@@ -284,6 +315,7 @@ export const ERROR_CODES = [
   'not_found',
   'conflict',
   'rate_limited',
+  'too_large',
   'not_connected',
   'timeout',
   'internal',

@@ -1,6 +1,7 @@
 /**
  * Request router: parses a frame, validates its payload against the protocol
- * map, runs the handler for its type and answers with exactly one `result` or `error`.
+ * map, runs the handler for its type and answers with exactly one `result` or
+ * `error`. Events caused by the request reach the same socket after the reply.
  */
 import {
   clientFrameSchema,
@@ -11,15 +12,16 @@ import {
   type RequestResult,
   type RequestType,
   type ServerFrame,
-  type Uin,
 } from '@openicq/protocol';
 import type { z } from 'zod';
+import type { Actor } from '../../application/support.ts';
 import { DomainError } from '../../domain/errors.ts';
 import { describeZodError } from '../validation.ts';
 import type { ClientConnection } from './connection.ts';
 
 export interface RequestContext {
-  readonly uin: Uin;
+  readonly actor: Actor;
+  readonly sessionId: number;
   readonly connection: ClientConnection;
 }
 
@@ -82,16 +84,26 @@ export class RequestRouter {
       return;
     }
     const startedAt = performance.now();
-    const reply = await this.execute(type, { uin: connection.uin, connection }, id, payload);
-    connection.send(reply);
-    connection.log.debug(
-      {
-        type,
-        durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
-        outcome: reply.kind === 'error' ? reply.error.code : 'ok',
-      },
-      'ws request',
-    );
+    const context: RequestContext = {
+      actor: { uin: connection.uin, connectionId: connection.id },
+      sessionId: connection.sessionId,
+      connection,
+    };
+    connection.holdEvents();
+    try {
+      const reply = await this.execute(type, context, id, payload);
+      connection.send(reply);
+      connection.log.debug(
+        {
+          type,
+          durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+          outcome: reply.kind === 'error' ? reply.error.code : 'ok',
+        },
+        'ws request',
+      );
+    } finally {
+      connection.releaseEvents();
+    }
   }
 
   private async execute<T extends RequestType>(

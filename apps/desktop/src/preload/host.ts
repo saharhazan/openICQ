@@ -8,39 +8,57 @@ import {
   BRIDGE_GLOBAL,
   IPC,
   PLATFORMS,
+  TRAY_COMMANDS,
   type DesktopBridge,
   type DesktopPlatform,
-  type NativeWindowEvent,
+  type TrayCommand,
+  type WindowState,
 } from '@openicq/desktop-bridge/contract';
 
 const platform: DesktopPlatform = PLATFORMS.find((p) => p === process.platform) ?? 'linux';
 
-function listen<T>(channel: string, listener: (value: T) => void): () => void {
-  const wrapped = (_event: IpcRendererEvent, value: T) => listener(value);
+function listen(channel: string, listener: (value: unknown) => void): () => void {
+  const wrapped = (_event: IpcRendererEvent, value: unknown) => listener(value);
   ipcRenderer.on(channel, wrapped);
   return () => {
     ipcRenderer.off(channel, wrapped);
   };
 }
 
+let windowState: WindowState = { visible: false, focused: false };
+const windowListeners = new Set<(state: WindowState) => void>();
+ipcRenderer.on(IPC.windowState, (_event, value: unknown) => {
+  if (typeof value !== 'object' || value === null) return;
+  const visible: unknown = Reflect.get(value, 'visible');
+  const focused: unknown = Reflect.get(value, 'focused');
+  if (typeof visible !== 'boolean' || typeof focused !== 'boolean') return;
+  windowState = { visible, focused };
+  for (const listener of windowListeners) listener(windowState);
+});
+
 const bridge: DesktopBridge = {
   platform,
-  showWindow: (id) => ipcRenderer.send(IPC.windowShow, id),
-  minimizeWindow: (id) => ipcRenderer.send(IPC.windowMinimize, id),
-  hideWindow: (id) => ipcRenderer.send(IPC.windowHide, id),
-  closeWindow: (id) => ipcRenderer.send(IPC.windowClose, id),
-  fitWindow: (id, size) => ipcRenderer.send(IPC.windowFit, id, size),
-  updateTray: (state) => ipcRenderer.send(IPC.trayUpdate, state),
-  requestAttention: () => ipcRenderer.send(IPC.attention),
-  systemIdleSeconds: async () => {
-    const seconds: unknown = await ipcRenderer.invoke(IPC.systemIdle);
-    if (typeof seconds !== 'number') throw new Error('The system idle time is not a number.');
-    return seconds;
-  },
+  setUnread: (count) => ipcRenderer.send(IPC.unread, count),
+  notify: (notification) => ipcRenderer.send(IPC.notify, notification),
+  setPreferences: (preferences) => ipcRenderer.send(IPC.preferences, preferences),
   openConnectionSettings: () => ipcRenderer.send(IPC.openConnection),
   quit: () => ipcRenderer.send(IPC.quit),
-  onWindowEvent: (listener) => listen<NativeWindowEvent>(IPC.windowEvent, listener),
-  onTrayCommand: (listener) => listen<string>(IPC.trayCommand, listener),
+  windowState: () => windowState,
+  onWindowState: (listener) => {
+    windowListeners.add(listener);
+    return () => {
+      windowListeners.delete(listener);
+    };
+  },
+  onNotificationClick: (listener) =>
+    listen(IPC.notificationClick, (value) => {
+      if (typeof value === 'number' && Number.isInteger(value) && value > 0) listener(value);
+    }),
+  onTrayCommand: (listener) =>
+    listen(IPC.trayCommand, (value) => {
+      const command = TRAY_COMMANDS.find((c): c is TrayCommand => c === value);
+      if (command) listener(command);
+    }),
 };
 
 contextBridge.exposeInMainWorld(BRIDGE_GLOBAL, bridge);

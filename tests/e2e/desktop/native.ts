@@ -1,5 +1,5 @@
 /** Helpers for the desktop app: every ICQ window is its own native window (a Playwright page). */
-import { _electron as electron, expect, type ElectronApplication, type Locator, type Page } from '@playwright/test';
+import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -20,26 +20,13 @@ export async function launch(label: string, config: ConnectionConfig, errors: st
   return app;
 }
 
-async function findWindow(app: ElectronApplication, title: string | RegExp): Promise<Page | null> {
-  for (const page of app.windows()) {
-    if (page.isClosed()) continue;
-    const current = await page.title().catch((error: unknown) => {
-      // A window can close between listing and reading its title; it is simply not the one we want.
-      if (page.isClosed()) return '';
-      throw error;
-    });
-    if (typeof title === 'string' ? current === title : title.test(current)) return page;
-  }
-  return null;
-}
-
-/** Waits for the native window with this title. */
-export async function nativeWindow(app: ElectronApplication, title: string | RegExp, timeoutMs = 15_000): Promise<Page> {
+/** The openICQ main window: the page loaded from the server (the Connection Settings page is a file). */
+export async function mainWindow(app: ElectronApplication, timeoutMs = 20_000): Promise<Page> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const page = await findWindow(app, title);
+    const page = app.windows().find((p) => !p.isClosed() && p.url().startsWith('http'));
     if (page) return page;
-    if (Date.now() > deadline) throw new Error(`No native window titled ${String(title)}`);
+    if (Date.now() > deadline) throw new Error('The openICQ main window did not open');
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 }
@@ -68,17 +55,5 @@ export async function expectVisible(app: ElectronApplication, title: string, vis
     // Say what the OS actually shows, so a failure on a CI runner can be understood from the log.
     const windows = JSON.stringify(await osWindows(app));
     throw new Error(`Expected "${title}" visible=${visible}; native windows: ${windows}`, { cause: error });
-  }
-}
-
-/**
- * Clicks a button whose job is to close its own native window (Register, Done, OK...).
- * The window can be gone before Playwright hears back from the click; that is success.
- */
-export async function clickClosing(page: Page, locator: Locator): Promise<void> {
-  try {
-    await locator.click();
-  } catch (error) {
-    if (!page.isClosed() && !String(error).includes('has been closed')) throw error;
   }
 }

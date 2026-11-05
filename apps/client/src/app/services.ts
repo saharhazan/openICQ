@@ -1,158 +1,142 @@
 /** Composition root: builds every service once and wires them to the store. */
 import type { DesktopBridge } from '@openicq/desktop-bridge';
 import { WS_PATH } from '@openicq/protocol';
-import { statusMenu } from '../features/contact-list/menus';
 import { ApiClient } from '../net/ApiClient';
 import { IcqConnection, sameOriginSocketUrl } from '../net/IcqConnection';
-import { findDesktopBridge } from '../platform/bridge';
-import { NativeWindowManager } from '../platform/NativeWindowManager';
-import { rasterize } from '../platform/rasterize';
-import { SystemActivityTarget } from '../platform/SystemActivityTarget';
-import { TrayController } from '../platform/TrayController';
-import type { SurfaceView } from '../platform/WindowSurface';
-import type { AppStoreState } from '../state/store';
-import type { MenuItem } from '../ui/PopupMenu';
-import { MESSAGE_ICON_PATHS } from '../ui/icons/MessageIcon';
-import { statusIconPaths } from '../ui/icons/StatusIcon';
+import { totalUnread } from '../state/selectors';
 import { createAppStore, type AppStore } from '../state/store';
-import { RESIZABLE_KINDS } from '../state/placement';
 import { SoundPlayer } from '../ui/SoundPlayer';
-import { IcqCommands } from './IcqCommands';
-import { IdleMonitor } from './IdleMonitor';
+import { AccountCommands } from './AccountCommands';
+import { findDesktopBridge } from './bridge';
+import { desktopFocusEvents, desktopFocusProbe } from './desktopFocus';
+import { ChatCommands } from './ChatCommands';
+import { GroupCommands } from './GroupCommands';
 import { LocalPrefs } from './LocalPrefs';
-import { STRINGS } from '../features/strings';
+import { browserNotifications, Notifier, type FocusProbe } from './Notifier';
+import type { Api } from './ports';
+import { ReadTracker } from './ReadTracker';
 import { SessionController } from './SessionController';
-import { openFromTray, type TrayIcon } from './trayActions';
-
-/** Present only inside the openICQ desktop app. */
-export interface DesktopServices {
-  bridge: DesktopBridge;
-  windows: NativeWindowManager;
-  tray: TrayController;
-}
 
 export interface Services {
   store: AppStore;
+  api: Api;
   session: SessionController;
-  commands: IcqCommands;
-  prefs: LocalPrefs;
-  sounds: SoundPlayer;
-  idle: IdleMonitor;
-  desktop: DesktopServices | null;
+  chats: ChatCommands;
+  account: AccountCommands;
+  groups: GroupCommands;
+  notifier: Notifier;
+  bridge: DesktopBridge | null;
   /** Stops listeners and timers (tests, hot reload). */
   dispose(): void;
 }
 
-function renderTrayIcon(icon: TrayIcon) {
-  const paths = icon.kind === 'message' ? MESSAGE_ICON_PATHS : statusIconPaths(icon.variant, icon.frame);
-  return { x1: rasterize(document, paths, 16), x2: rasterize(document, paths, 32) };
-}
+const DRAFT_SAVE_DELAY_MS = 1_000;
 
-/** The tray menu: the status choices, then the program itself, as the ICQ tray menu offered. */
-function trayMenu(services: Services, bridge: DesktopBridge, state: AppStoreState): MenuItem[] {
-  const { store } = services;
-  const statuses: MenuItem[] = state.session
-    ? statusMenu(services, state.status).map((item) =>
-        item.type === 'item' ? { ...item, checked: item.isDefault === true, isDefault: false } : item,
-      )
-    : [];
-  return [
-    ...statuses,
-    { type: 'separator' },
-    { type: 'item', label: STRINGS.appName, onSelect: () => openFromTray(store) },
-    { type: 'item', label: 'Connection Settings...', onSelect: () => bridge.openConnectionSettings() },
-    { type: 'item', label: `About ${STRINGS.appName}`, onSelect: () => store.getState().openWindow({ kind: 'about' }) },
-    { type: 'separator' },
-    { type: 'item', label: STRINGS.shutDown, onSelect: () => store.getState().openWindow({ kind: 'confirmShutDown' }) },
-  ];
-}
+const windowFocus: FocusProbe = {
+  focused: () => document.visibilityState === 'visible' && document.hasFocus(),
+};
 
 export function createServices(): Services {
   const bridge = findDesktopBridge();
-  let storageFailureReported = false;
+  const focus = bridge ? desktopFocusProbe(bridge) : windowFocus;
+  const focusTargets = bridge ? [desktopFocusEvents(bridge)] : [window, document];
   let storeRef: AppStore | null = null;
-  const prefs = new LocalPrefs(
+  let storageReported = false;
+  const local = new LocalPrefs(
     () => window.localStorage,
     (error) => {
-      // Reported once: the app keeps working, it only forgets positions and recent ICQ numbers.
-      if (storageFailureReported || !storeRef) return;
-      storageFailureReported = true;
-      storeRef.getState().reportError(error, STRINGS.appName);
+      // Reported once: the app keeps working, it only forgets settings and drafts.
+      if (storageReported || !storeRef) return;
+      storageReported = true;
+      storeRef.getState().reportError(error);
     },
   );
-  const store = createAppStore({
-    // Native windows are placed on the screen; in a browser, inside the page.
-    viewport: () =>
-      bridge ? { width: window.screen.availWidth, height: window.screen.availHeight } : { width: window.innerWidth, height: window.innerHeight },
-    saved: (kind) => {
-      const rect = prefs.windowRect(kind);
-      if (!rect) return null;
-      return RESIZABLE_KINDS.has(kind) ? rect : { ...rect, width: null, height: null };
-    },
-  });
+  const store = createAppStore({ prefs: local.loadPrefs() });
   storeRef = store;
-  const report = (error: Error) => store.getState().reportError(error, STRINGS.appName);
+  const report = (error: Error) => store.getState().reportError(error);
   const sounds = new SoundPlayer(report);
   const api = new ApiClient();
   const connection = new IcqConnection({ url: sameOriginSocketUrl(WS_PATH) });
-  const session = new SessionController({ api, connection, store, sounds, prefs });
-  const commands = new IcqCommands(connection, store);
-  const idle = new IdleMonitor({
-    target: bridge ? new SystemActivityTarget(() => bridge.systemIdleSeconds(), report) : window,
-    onChange: (level) => session.handleIdle(level),
-  });
-
-  // Auto-away follows the server-side preferences.
-  const applyIdleSettings = () => {
-    const preferences = store.getState().settings?.preferences;
-    if (!preferences) {
-      idle.stop();
-      return;
-    }
-    idle.configure(preferences.autoAwayMinutes, preferences.autoNaMinutes);
-    idle.start();
-  };
-  const unsubscribe = store.subscribe((state, previous) => {
-    if (state.settings !== previous.settings) applyIdleSettings();
-  });
-
-  const services: Services = {
-    store,
-    session,
-    commands,
-    prefs,
+  const notifier = new Notifier({
+    bridge,
+    web: bridge ? null : browserNotifications(),
     sounds,
-    idle,
-    desktop: null,
+    focus,
+    prefs: () => store.getState().prefs,
+    setTitle: (title) => {
+      document.title = title;
+    },
+    onOpenChat: (chatId) => store.getState().openChat(chatId),
+    onError: report,
+  });
+  const chats = new ChatCommands({ api, connection, store, sound: notifier });
+  const account = new AccountCommands({ api, connection, store });
+  const groups = new GroupCommands({ connection, store });
+  const session = new SessionController({
+    api,
+    connection,
+    store,
+    drafts: local,
+    alerts: notifier,
+    sounds,
+    onStarted: () => chats.reloadOpenChat(),
+  });
+  const reads = new ReadTracker({ store, focus, markRead: (chatId) => chats.markRead(chatId), targets: focusTargets });
+  reads.start();
+
+  let draftTimer: ReturnType<typeof setTimeout> | null = null;
+  const unsubscribe = store.subscribe((state, previous) => {
+    if (state.data.chats !== previous.data.chats) notifier.setUnread(totalUnread(state.data.chats));
+    if (state.prefs !== previous.prefs) {
+      local.savePrefs(state.prefs);
+      const p = state.prefs;
+      const q = previous.prefs;
+      if (bridge && (p.launchAtLogin !== q.launchAtLogin || p.launchMinimized !== q.launchMinimized || p.animateTaskbar !== q.animateTaskbar)) {
+        bridge.setPreferences({ launchAtLogin: p.launchAtLogin, launchMinimized: p.launchMinimized, animateTaskbar: p.animateTaskbar });
+      }
+    }
+    if (state.phase === 'auth' && previous.phase !== 'auth' && draftTimer !== null) {
+      // Signed out with a save pending: write the account's drafts now instead of the emptied ones.
+      clearTimeout(draftTimer);
+      draftTimer = null;
+      const previousUin = previous.data.me?.uin;
+      if (previousUin !== undefined) local.saveDrafts(previousUin, previous.drafts);
+    }
+    const uin = state.data.me?.uin;
+    if (state.drafts !== previous.drafts && uin !== undefined && state.phase !== 'auth') {
+      if (draftTimer !== null) clearTimeout(draftTimer);
+      draftTimer = setTimeout(() => {
+        draftTimer = null;
+        local.saveDrafts(uin, store.getState().drafts);
+      }, DRAFT_SAVE_DELAY_MS);
+    }
+  });
+
+  const stops: Array<() => void> = [unsubscribe, () => reads.stop()];
+  if (bridge) {
+    const p = store.getState().prefs;
+    bridge.setPreferences({ launchAtLogin: p.launchAtLogin, launchMinimized: p.launchMinimized, animateTaskbar: p.animateTaskbar });
+    stops.push(
+      bridge.onNotificationClick((chatId) => store.getState().openChat(chatId)),
+      bridge.onTrayCommand((command) => {
+        if (command === 'settings') store.getState().patch({ tab: 'settings', settingsPage: 'general' });
+      }),
+    );
+  }
+
+  return {
+    store,
+    api,
+    session,
+    chats,
+    account,
+    groups,
+    notifier,
+    bridge,
     dispose: () => {
-      unsubscribe();
-      idle.stop();
-      services.desktop?.windows.stop();
-      services.desktop?.tray.stop();
+      stops.forEach((stop) => stop());
+      if (draftTimer !== null) clearTimeout(draftTimer);
       session.dispose();
     },
   };
-  if (bridge) {
-    const windows = new NativeWindowManager({
-      store,
-      bridge,
-      prefs,
-      hostDocument: document,
-      // Safe: a same-origin window opened by this page is a full global object of its own.
-      open: (frameName, features) => window.open('', frameName, features) as SurfaceView | null,
-      report,
-    });
-    const tray = new TrayController({
-      store,
-      bridge,
-      renderIcon: renderTrayIcon,
-      menu: (state) => trayMenu(services, bridge, state),
-      onActivate: () => openFromTray(store),
-      report,
-    });
-    services.desktop = { bridge, windows, tray };
-    windows.start();
-    tray.start();
-  }
-  return services;
 }

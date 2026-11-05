@@ -1,5 +1,5 @@
 /**
- * Client to server requests sent over the WebSocket.
+ * Client to server requests over the WebSocket.
  *
  * Each request type has a payload schema (validated by the server) and a
  * result schema (validated by the client). Adding a request means adding one
@@ -8,123 +8,199 @@
 import { z } from 'zod';
 import {
   LIMITS,
-  chatMessageSchema,
-  contactSchema,
+  accountSettingsSchema,
+  assignableRoleSchema,
+  chatSchema,
+  groupInvitePolicySchema,
+  idSchema,
+  meSchema,
+  memberSchema,
+  messageSchema,
   multiLine,
-  notInListEntrySchema,
-  profileSchema,
   profileUpdateSchema,
-  searchQuerySchema,
-  searchResultSchema,
-  settableStatusSchema,
-  settingsSchema,
-  settingsUpdateSchema,
+  reactionSchema,
+  readMarkSchema,
+  sessionEntrySchema,
   singleLine,
-  statusSchema,
-  systemNoticeSchema,
   uinSchema,
+  userSchema,
 } from './domain.ts';
 
-const noticeIdSchema = z.number().int().positive();
 const emptySchema = z.object({}).strict();
+const okSchema = z.object({}).strict();
+const uinListSchema = z.array(uinSchema).max(LIMITS.membersPerRequest);
+const messageIdListSchema = z.array(idSchema).min(1);
+const inviteTokenSchema = z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/);
 
 export const requestPayloadSchemas = {
-  /** First request after connecting: announces the initial status and returns the snapshot. */
-  'session.start': z.object({ status: settableStatusSchema }),
-  'status.set': z.object({
-    status: settableStatusSchema,
-    /** Replaces the stored status message for a status that carries one (see STATUS_MESSAGE_STATUSES). */
-    awayMessage: multiLine(LIMITS.awayMessage).optional(),
-  }),
-  'contact.add': z.object({
-    uin: uinSchema,
-    nickname: singleLine(LIMITS.nickname).optional(),
-    /** Text of the authorization request, used when the target requires authorization. */
-    reason: multiLine(LIMITS.reason).default(''),
-  }),
-  'contact.remove': z.object({ uin: uinSchema }),
-  'contact.rename': z.object({ uin: uinSchema, nickname: singleLine(LIMITS.nickname).min(1) }),
-  'auth.request': z.object({ uin: uinSchema, reason: multiLine(LIMITS.reason).default('') }),
-  'auth.respond': z.object({
-    noticeId: noticeIdSchema,
-    grant: z.boolean(),
-    reason: multiLine(LIMITS.reason).default(''),
-  }),
-  'notice.dismiss': z.object({ noticeId: noticeIdSchema }),
-  'message.send': z.object({
-    to: uinSchema,
-    text: multiLine(LIMITS.messageText).refine((text) => text.trim().length > 0, 'Message is empty'),
-    /** "Send Urgent" (only meaningful when the recipient is Occupied). */
-    urgent: z.boolean().default(false),
-  }),
-  /** Marks every unread message from `from` as read. */
-  'message.markRead': z.object({ from: uinSchema }),
-  'history.get': z.object({
-    uin: uinSchema,
-    /** Return messages older than this id (exclusive). Omit for the newest page. */
-    beforeId: z.number().int().positive().optional(),
+  /** First request after connecting: returns everything the main window needs. */
+  'session.start': emptySchema,
+
+  /** One page of history, newest last. Also returns the read marks of the chat's members. */
+  'chat.history': z.object({
+    chatId: idSchema,
+    beforeId: idSchema.optional(),
     limit: z.number().int().min(1).max(LIMITS.historyPageMax).default(LIMITS.historyPageDefault),
   }),
-  'search.users': searchQuerySchema,
-  'profile.get': z.object({ uin: uinSchema }),
+  /** Opens (or creates) the direct chat with a user. */
+  'chat.direct': z.object({ uin: uinSchema }),
+  'chat.read': z.object({ chatId: idSchema, messageId: idSchema }),
+  'chat.markUnread': z.object({ chatId: idSchema }),
+  'chat.update': z.object({ chatId: idSchema, pinned: z.boolean().optional(), muted: z.boolean().optional() }),
+  /** "Clear history": hides every current message of the chat, for the viewer only. */
+  'chat.clear': z.object({ chatId: idSchema }),
+  /** Direct chat: "Hide" (comes back with the next message). Group: "Leave and delete". */
+  'chat.remove': z.object({ chatId: idSchema }),
+  /** Sent at most every few seconds while the user types. */
+  typing: z.object({ chatId: idSchema }),
+
+  'message.send': z.object({
+    chatId: idSchema,
+    /** Unique per sending client; lets the client match the echo to its pending bubble. */
+    clientId: z.string().min(1).max(64),
+    text: multiLine(LIMITS.messageText),
+    replyToId: idSchema.optional(),
+    attachmentFileIds: z.array(idSchema).max(LIMITS.attachmentsPerMessage).default([]),
+  }),
+  'message.forward': z.object({
+    fromChatId: idSchema,
+    messageIds: messageIdListSchema.max(LIMITS.forwardMessages),
+    toChatId: idSchema,
+  }),
+  'message.edit': z.object({ messageId: idSchema, text: multiLine(LIMITS.messageText).min(1) }),
+  /** "Delete for me" or "Delete for all". */
+  'message.delete': z.object({
+    chatId: idSchema,
+    messageIds: messageIdListSchema.max(LIMITS.deleteMessages),
+    forAll: z.boolean(),
+  }),
+  /** Null removes the viewer's reaction. One reaction per user per message. */
+  'message.react': z.object({ messageId: idSchema, reaction: reactionSchema.nullable() }),
+
+  /** By nickname, ICQ#, email or name. */
+  'user.search': z.object({ query: singleLine(LIMITS.searchQueryMax).min(LIMITS.searchQueryMin) }),
+  'user.get': z.object({ uin: uinSchema }),
+  'user.block': z.object({ uin: uinSchema, blocked: z.boolean() }),
+  'contact.add': z.object({ uin: uinSchema }),
+  'contact.remove': z.object({ uin: uinSchema }),
+
   'profile.update': profileUpdateSchema,
-  /** "Read Away Message" on a contact (also returns the Free For Chat message). */
-  'away.get': z.object({ uin: uinSchema }),
-  'settings.update': settingsUpdateSchema,
-  'ignore.add': z.object({ uin: uinSchema }),
-  'ignore.remove': z.object({ uin: uinSchema }),
+  'nickname.check': z.object({ nickname: z.string().max(LIMITS.nicknameMax * 2) }),
+  'settings.update': z.object({ groupInvites: groupInvitePolicySchema }).partial().strict(),
   'password.change': z.object({
-    currentPassword: z.string().min(1).max(LIMITS.passwordMax),
+    oldPassword: z.string().min(1).max(LIMITS.passwordMax),
     newPassword: z.string().min(LIMITS.passwordMin).max(LIMITS.passwordMax),
   }),
-  'ping': emptySchema,
+  'sessions.list': emptySchema,
+  /** Closes one session, or every session but this one. */
+  'sessions.close': z.union([z.object({ sessionId: idSchema }).strict(), z.object({ others: z.literal(true) }).strict()]),
+
+  'group.create': z.object({
+    name: singleLine(LIMITS.groupName).min(1, 'Group name is required'),
+    about: multiLine(LIMITS.groupAbout).default(''),
+    avatarFileId: idSchema.nullable().default(null),
+    memberUins: uinListSchema.default([]),
+    joinWithApproval: z.boolean().default(false),
+    public: z.boolean().default(false),
+  }),
+  'group.update': z
+    .object({
+      chatId: idSchema,
+      name: singleLine(LIMITS.groupName).min(1),
+      about: multiLine(LIMITS.groupAbout),
+      rules: multiLine(LIMITS.groupRules),
+      avatarFileId: idSchema.nullable(),
+      joinWithApproval: z.boolean(),
+      public: z.boolean(),
+    })
+    .partial()
+    .required({ chatId: true }),
+  'group.members': z.object({ chatId: idSchema }),
+  'group.addMembers': z.object({ chatId: idSchema, uins: uinListSchema.min(1) }),
+  'group.removeMember': z.object({ chatId: idSchema, uin: uinSchema }),
+  'group.setRole': z.object({ chatId: idSchema, uin: uinSchema, role: assignableRoleSchema }),
+  /** "Generate new link": the old link stops working. */
+  'group.regenerateLink': z.object({ chatId: idSchema }),
+  /** What an invite link opens, before joining. */
+  'group.preview': z.object({ inviteToken: inviteTokenSchema }),
+  'group.join': z.object({ inviteToken: inviteTokenSchema }),
+  'group.requests': z.object({ chatId: idSchema }),
+  'group.resolveRequest': z.object({ chatId: idSchema, uin: uinSchema, approve: z.boolean() }),
+
+  ping: emptySchema,
 } as const;
 
 export const sessionSnapshotSchema = z.object({
-  self: profileSchema,
-  settings: settingsSchema,
-  status: statusSchema,
-  contacts: z.array(contactSchema),
-  notices: z.array(systemNoticeSchema),
-  /** Unread messages, including offline messages, oldest first. */
-  unread: z.array(chatMessageSchema),
-  notInList: z.array(notInListEntrySchema),
-  ignored: z.array(uinSchema),
+  me: meSchema,
+  settings: accountSettingsSchema,
+  /** Every chat in the viewer's list (hidden ones excluded). */
+  chats: z.array(chatSchema),
+  /** Every user the snapshot refers to: peers, contacts, last message senders. */
+  users: z.array(userSchema),
+  contacts: z.array(uinSchema),
   serverTime: z.string(),
 });
 export type SessionSnapshot = z.infer<typeof sessionSnapshotSchema>;
 
-export const autoResponseSchema = z.object({
-  status: statusSchema,
-  text: z.string(),
+export const groupPreviewSchema = z.object({
+  chatId: idSchema,
+  title: z.string(),
+  about: z.string(),
+  avatarFileId: idSchema.nullable(),
+  membersCount: z.number().int().nonnegative(),
+  joinWithApproval: z.boolean(),
+  /** "member" when already in, "pending" while a join request waits. */
+  state: z.enum(['none', 'member', 'pending']),
 });
-export type AutoResponse = z.infer<typeof autoResponseSchema>;
+export type GroupPreview = z.infer<typeof groupPreviewSchema>;
 
 export const requestResultSchemas = {
   'session.start': sessionSnapshotSchema,
-  'status.set': z.object({ status: statusSchema }),
-  'contact.add': z.object({ contact: contactSchema }),
-  'contact.remove': z.object({}),
-  'contact.rename': z.object({ contact: contactSchema }),
-  'auth.request': z.object({}),
-  'auth.respond': z.object({}),
-  'notice.dismiss': z.object({}),
-  'message.send': z.object({
-    message: chatMessageSchema,
-    /** Present when the recipient is in an away-like status. */
-    autoResponse: autoResponseSchema.nullable(),
+  'chat.history': z.object({
+    messages: z.array(messageSchema),
+    users: z.array(userSchema),
+    readMarks: z.array(readMarkSchema),
+    hasMore: z.boolean(),
   }),
-  'message.markRead': z.object({ count: z.number().int().min(0) }),
-  'history.get': z.object({ messages: z.array(chatMessageSchema), hasMore: z.boolean() }),
-  'search.users': z.object({ results: z.array(searchResultSchema) }),
-  'profile.get': z.object({ profile: profileSchema }),
-  'profile.update': z.object({ profile: profileSchema }),
-  'away.get': z.object({ status: statusSchema, text: z.string() }),
-  'settings.update': z.object({ settings: settingsSchema }),
-  'ignore.add': z.object({}),
-  'ignore.remove': z.object({}),
-  'password.change': z.object({}),
-  'ping': z.object({ serverTime: z.string() }),
+  'chat.direct': z.object({ chat: chatSchema, users: z.array(userSchema) }),
+  'chat.read': okSchema,
+  'chat.markUnread': okSchema,
+  'chat.update': z.object({ chat: chatSchema }),
+  'chat.clear': okSchema,
+  'chat.remove': okSchema,
+  typing: okSchema,
+  'message.send': z.object({ message: messageSchema }),
+  'message.forward': z.object({ messages: z.array(messageSchema) }),
+  'message.edit': z.object({ message: messageSchema }),
+  'message.delete': okSchema,
+  'message.react': z.object({ message: messageSchema }),
+  'user.search': z.object({ users: z.array(userSchema) }),
+  'user.get': z.object({ user: userSchema }),
+  'user.block': z.object({ user: userSchema }),
+  'contact.add': z.object({ user: userSchema }),
+  'contact.remove': okSchema,
+  'profile.update': z.object({ me: meSchema }),
+  'nickname.check': z.object({ available: z.boolean(), reason: z.enum(['taken', 'invalid']).nullable() }),
+  'settings.update': z.object({ settings: accountSettingsSchema }),
+  'password.change': okSchema,
+  'sessions.list': z.object({ sessions: z.array(sessionEntrySchema) }),
+  'sessions.close': okSchema,
+  'group.create': z.object({ chat: chatSchema, users: z.array(userSchema) }),
+  'group.update': z.object({ chat: chatSchema }),
+  'group.members': z.object({ members: z.array(memberSchema), users: z.array(userSchema) }),
+  /** Users whose "Who can add me to groups" refused the invitation get an invite link instead. */
+  'group.addMembers': z.object({ added: z.array(uinSchema), refused: z.array(uinSchema) }),
+  'group.removeMember': okSchema,
+  'group.setRole': okSchema,
+  'group.regenerateLink': z.object({ inviteToken: z.string() }),
+  'group.preview': z.object({ group: groupPreviewSchema }),
+  'group.join': z.object({ state: z.enum(['member', 'pending']), chat: chatSchema.nullable() }),
+  'group.requests': z.object({
+    requests: z.array(z.object({ uin: uinSchema, requestedAt: z.string() })),
+    users: z.array(userSchema),
+  }),
+  'group.resolveRequest': okSchema,
+  ping: z.object({ serverTime: z.string() }),
 } as const satisfies Record<keyof typeof requestPayloadSchemas, z.ZodType>;
 
 export type RequestType = keyof typeof requestPayloadSchemas;
@@ -132,10 +208,11 @@ export const REQUEST_TYPES = Object.keys(requestPayloadSchemas) as RequestType[]
 
 /** What a caller passes (defaults not yet applied). */
 export type RequestInput<T extends RequestType> = z.input<(typeof requestPayloadSchemas)[T]>;
-/** What a handler receives after validation. */
+/** What the server handler receives (after parsing). */
 export type RequestPayload<T extends RequestType> = z.output<(typeof requestPayloadSchemas)[T]>;
 export type RequestResult<T extends RequestType> = z.output<(typeof requestResultSchemas)[T]>;
 
 export function isRequestType(value: string): value is RequestType {
   return Object.hasOwn(requestPayloadSchemas, value);
 }
+

@@ -1,23 +1,21 @@
 /*
- * The 98.css build inlines its colours, so the design tokens used by the
- * ICQ styles are declared here (values from 98.css, MIT licence).
+ * Base styles. Colours come from tokens.css (the ICQ New themes); sizes are the
+ * logical pixels of the original at 100% scale (docs/research, sections 6 and 7).
+ * --fs is the "Font size" setting: Small -1 px, Medium 0, Large +2 px.
  */
 :root {
-  --text-color: #222222;
-  --surface: #c0c0c0;
-  --button-highlight: #ffffff;
-  --button-face: #dfdfdf;
-  --button-shadow: #808080;
-  --window-frame: #0a0a0a;
-  --dialog-blue: #000080;
-  --dialog-blue-light: #1084d0;
-  --border-raised-outer: inset -1px -1px var(--window-frame), inset 1px 1px var(--button-highlight);
-  --border-raised-inner: inset -2px -2px var(--button-shadow), inset 2px 2px var(--button-face);
-  --border-sunken-outer: inset -1px -1px var(--button-highlight), inset 1px 1px var(--window-frame);
-  --border-sunken-inner: inset -2px -2px var(--button-face), inset 2px 2px var(--button-shadow);
-  --border-field: inset -1px -1px var(--button-highlight), inset 1px 1px var(--button-shadow), inset -2px -2px var(--button-face),
-    inset 2px 2px var(--window-frame);
-  --border-status-field: inset -1px -1px var(--button-face), inset 1px 1px var(--button-shadow);
+  --fs: 0px;
+  --font-ui: 'Source Sans 3', 'Source Sans Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --header-h: 56px;
+  --column-w: 328px;
+  --mini-w: 68px;
+  --sidebar-w: 328px;
+  --tabbar-h: 52px;
+  --bubble-radius: 12px;
+  --bubble-chain-radius: 4px;
+  --bubble-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), 0 2px 0 rgba(0, 0, 0, 0.01);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
 html,
@@ -28,35 +26,93 @@ body,
 }
 
 body {
-  background: #008080;
+  font-family: var(--font-ui);
+  font-size: calc(14px + var(--fs));
+  color: var(--text-solid);
+  background: var(--base-globalwhite);
   overflow: hidden;
-  font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
-  font-size: 11px;
-  -webkit-font-smoothing: none;
-  color: #000000;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--text-primary);
+  text-decoration: var(--link-decoration);
+}
+
+a:hover {
+  color: var(--text-primary-hover);
+}
+
+::selection {
+  background: var(--primary-bright-hover);
 }
 
 [hidden] {
   display: none !important;
 }
 
-.pixel-icon {
-  display: inline-block;
-  flex: none;
-  image-rendering: pixelated;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-/* 98.css sets 75px minimum on every button; ICQ dialogs size their own. */
-button {
-  min-width: 0;
+/* TransparentScrollBar: track ghost_light_inverse, thumb ghost_secondary_inverse. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ghost-secondary-inverse) transparent;
 }
 
-button.default {
-  font-weight: normal;
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-/* Read-only edits show their value in black on the dialog face, like Win32 read-only edit controls. */
-input[readonly],
-textarea[readonly] {
-  color: #000000;
+*::-webkit-scrollbar-thumb {
+  background: var(--ghost-secondary-inverse);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ghost-secondary-inverse-hover);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.app-splash {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--base-primary);
 }

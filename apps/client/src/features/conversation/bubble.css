@@ -1,0 +1,424 @@
+/*
+ * Bubbles (MessageStyle.cpp): radius 12, 4 on the joined corner, padding 12 x 8,
+ * minimum 36, maximum 600. Incoming 54 from the left, outgoing 32 from the right,
+ * top margin 8 between groups and 2 inside a chain. Time 10 px inside.
+ */
+
+.msg-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 32px 0 54px;
+}
+
+.msg-row.chained-prev {
+  padding-top: 2px;
+}
+
+/* The side opposite the bubble grows with the width (MessageStyle getLeftMargin / getRightMargin breakpoints). */
+.msg-in {
+  justify-content: flex-start;
+  padding-right: max(32px, min(88px, calc(100% - 364px)));
+}
+
+.msg-out {
+  justify-content: flex-end;
+  padding-left: max(54px, min(88px, calc(100% - 384px)));
+}
+
+.msg-in:has(.msg-avatar) {
+  padding-left: 16px;
+}
+
+.msg-avatar {
+  flex: none;
+  width: 32px;
+  margin-right: 6px;
+}
+
+.msg-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: min(600px, 100%);
+}
+
+.msg-out .msg-column {
+  align-items: flex-end;
+}
+
+.bubble {
+  position: relative;
+  min-width: 48px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--bubble-radius);
+  background: var(--chat-primary);
+  color: var(--text-solid);
+  box-shadow: var(--bubble-shadow);
+  outline: none;
+  transition: transform 100ms var(--ease);
+}
+
+.msg-out .bubble {
+  background: var(--chat-secondary);
+}
+
+.msg-in.chained-prev .bubble {
+  border-top-left-radius: var(--bubble-chain-radius);
+}
+
+.msg-in.chained-next .bubble {
+  border-bottom-left-radius: var(--bubble-chain-radius);
+}
+
+.msg-out.chained-prev .bubble {
+  border-top-right-radius: var(--bubble-chain-radius);
+}
+
+.msg-out.chained-next .bubble {
+  border-bottom-right-radius: var(--bubble-chain-radius);
+}
+
+.bubble-media {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.msg-out .bubble-media {
+  background: transparent;
+}
+
+.msg-flash .bubble {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.msg-sender {
+  margin-bottom: 4px;
+  font-size: calc(14px + var(--fs));
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-text {
+  font-size: calc(15px + var(--fs));
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg-text a {
+  color: var(--text-primary);
+}
+
+.msg-tombstone {
+  color: var(--base-primary);
+  font-style: italic;
+}
+
+.msg-meta {
+  float: right;
+  display: inline-flex;
+  gap: 4px;
+  margin: 6px 0 -4px 8px;
+  font-size: calc(10px + var(--fs));
+  line-height: 14px;
+  color: var(--base-primary);
+  font-style: normal;
+  user-select: none;
+}
+
+.msg-out .msg-meta {
+  color: var(--primary-pastel);
+}
+
+.msg-meta-overlay,
+.msg-out .msg-meta-overlay {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  float: none;
+  height: 20px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--ghost-primary);
+  color: var(--text-solid-permanent);
+  line-height: 20px;
+}
+
+.forwarded {
+  margin-bottom: 4px;
+  font-size: calc(13px + var(--fs));
+  color: var(--text-primary);
+}
+
+.quote-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 108px;
+  max-width: 100%;
+  margin: 0 0 6px;
+  padding: 0 0 0 8px;
+  border: 0;
+  border-left: 2px solid var(--primary);
+  background: none;
+  text-align: left;
+}
+
+.quote-sender {
+  font-size: calc(13px + var(--fs));
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.quote-text {
+  font-size: calc(13px + var(--fs));
+  line-height: 16px;
+  color: var(--text-solid);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.quote-deleted {
+  color: var(--base-primary);
+  font-style: italic;
+}
+
+.media-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -4px -8px 6px;
+}
+
+.media-standalone {
+  margin: 0;
+}
+
+.media-image {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--chat-primary-media);
+  cursor: zoom-in;
+}
+
+.media-standalone .media-image {
+  border-radius: var(--bubble-radius);
+}
+
+.media-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-pending {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 320px;
+  max-width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--text-solid);
+  text-decoration: none;
+}
+
+.media-standalone .file-card {
+  background: var(--chat-primary);
+  box-shadow: var(--bubble-shadow);
+}
+
+.msg-out .media-standalone .file-card {
+  background: var(--chat-secondary);
+}
+
+.file-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.file-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: calc(14px + var(--fs));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: calc(12px + var(--fs));
+  color: var(--base-primary);
+}
+
+/* The tick sits in the 32 px right margin: 4 px after the bubble, 16 x 16. */
+.msg-tick {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.msg-row:has(.reaction-bar) .msg-tick,
+.msg-row:has(.read-heads) .msg-tick {
+  bottom: 28px;
+}
+
+.read-heads {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 2px;
+  align-self: flex-end;
+}
+
+.reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--base-globalwhite);
+  color: var(--text-solid);
+  font-size: 13px;
+  box-shadow: var(--bubble-shadow);
+}
+
+.reaction-mine {
+  border-color: var(--primary);
+  background: var(--secondary-selected);
+  color: var(--text-primary);
+}
+
+.msg-hover {
+  position: relative;
+  align-self: center;
+  margin: 0 4px;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity 150ms var(--ease), transform 150ms var(--ease);
+}
+
+.msg-out .msg-hover {
+  order: -1;
+  transform: translateX(-8px);
+}
+
+.msg-row:hover .msg-hover,
+.msg-hover:focus-within {
+  opacity: 1;
+  transform: none;
+}
+
+.msg-react-button {
+  width: 28px;
+  height: 28px;
+}
+
+.reaction-picker {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: -8px;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 20px;
+  background: var(--base-globalwhite);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  animation: fade-in 150ms var(--ease);
+}
+
+.msg-out .reaction-picker {
+  left: auto;
+  right: -8px;
+}
+
+.reaction-option {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: 22px;
+  line-height: 32px;
+  transition: transform 100ms var(--ease);
+}
+
+.reaction-option:hover,
+.reaction-option:focus-visible {
+  transform: scale(1.2);
+}
+
+.msg-selecting {
+  cursor: pointer;
+}
+
+.msg-selected {
+  background: var(--secondary-selected);
+}
+
+.select-mark {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  border: 2px solid var(--base-secondary);
+  border-radius: 50%;
+  background: var(--base-globalwhite);
+  color: #ffffff;
+}
+
+.select-mark-on {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.msg-selecting.msg-in {
+  padding-left: 62px;
+}
