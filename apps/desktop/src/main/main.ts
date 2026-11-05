@@ -3,17 +3,17 @@
  *
  * Start-up: read the connection choice (ask on the first start), start the
  * embedded server when this computer hosts, then load the client from the
- * server into the hidden host page, which opens every ICQ window natively.
- * The app lives in the tray like the original ICQ; it ends only through
- * Shut Down, the tray menu or the OS quit command.
+ * server into the main window. Like ICQ New, closing the window keeps openICQ
+ * in the tray; it ends through the tray menu or the OS quit command.
  */
 import { join } from 'node:path';
-import { app, dialog, Menu, nativeImage, session } from 'electron';
-import { TRAY_ACTIVATE } from '@openicq/desktop-bridge';
+import { app, dialog, Menu, session } from 'electron';
+import type { DesktopPreferences } from '@openicq/desktop-bridge';
 import { loadConnectionConfig, saveConnectionConfig, type ConnectionConfig } from './connection-config.ts';
 import { askForConnection } from './connection-window.ts';
+import { DEFAULT_DESKTOP_PREFERENCES, loadDesktopPreferences, saveDesktopPreferences } from './desktop-preferences.ts';
 import { startEmbeddedServer, type EmbeddedServer } from './embedded-server.ts';
-import { HostWindow } from './host-window.ts';
+import { MainWindow } from './main-window.ts';
 import { AppTray } from './tray.ts';
 
 const APP_ID = 'io.github.saharhazan.openicq';
@@ -26,9 +26,11 @@ const paths = {
   connectionPage: join(__dirname, 'connection', 'connection.html'),
   icon: join(__dirname, 'assets', 'icon.png'),
   trayIcon: join(__dirname, 'assets', 'tray.png'),
+  trayUnreadIcon: join(__dirname, 'assets', 'tray-unread.png'),
   // Outside the asar archive in a packaged app, so the server reads plain files.
   client: app.isPackaged ? join(process.resourcesPath, 'client') : join(__dirname, 'client'),
   config: () => join(app.getPath('userData'), 'connection.json'),
+  preferences: () => join(app.getPath('userData'), 'desktop-preferences.json'),
 };
 
 function describe(error: unknown): string {
@@ -36,14 +38,28 @@ function describe(error: unknown): string {
 }
 
 class OpenIcqApp {
-  #host: HostWindow | null = null;
+  #window: MainWindow | null = null;
   #tray: AppTray | null = null;
   #server: EmbeddedServer | null = null;
   #config: ConnectionConfig | null = null;
+  #preferences: DesktopPreferences = DEFAULT_DESKTOP_PREFERENCES;
   #shuttingDown = false;
 
   async start(): Promise<void> {
-    this.#tray = new AppTray(nativeImage.createFromPath(paths.trayIcon), (command) => this.#host?.sendTrayCommand(command));
+    this.#tray = new AppTray(
+      { normal: paths.trayIcon, unread: paths.trayUnreadIcon },
+      {
+        open: () => this.activate(),
+        settings: () => this.#window?.sendTrayCommand('settings'),
+        connectionSettings: () => this.#reportFailure(this.#changeConnection()),
+        quit: () => app.quit(),
+      },
+    );
+    try {
+      this.#preferences = await loadDesktopPreferences(paths.preferences());
+    } catch (error) {
+      dialog.showErrorBox('openICQ', `${describe(error)}\nThe default preferences are used.`);
+    }
     let config: ConnectionConfig | null = null;
     let problem: string | null = null;
     try {
@@ -56,7 +72,22 @@ class OpenIcqApp {
 
   /** Brings openICQ to the front: a dock click, a second start, the tray icon. */
   activate(): void {
-    this.#host?.sendTrayCommand(TRAY_ACTIVATE);
+    this.#window?.show();
+  }
+
+  #reportFailure(work: Promise<void>): void {
+    work.catch((error: unknown) => dialog.showErrorBox('openICQ', describe(error)));
+  }
+
+  /** The page's General and Notifications settings that the shell applies. */
+  async #applyPreferences(preferences: DesktopPreferences): Promise<void> {
+    const changed = JSON.stringify(preferences) !== JSON.stringify(this.#preferences);
+    this.#preferences = preferences;
+    if (process.platform !== 'linux') {
+      // "Launch minimized" is the saved preference read at start, so only the login item is set here.
+      app.setLoginItemSettings({ openAtLogin: preferences.launchAtLogin });
+    }
+    if (changed) await saveDesktopPreferences(paths.preferences(), preferences);
   }
 
   /** Keeps asking until a server is reachable, or the user gives up. */
@@ -109,29 +140,30 @@ class OpenIcqApp {
     } else {
       url = config.serverUrl;
     }
-    this.#host = new HostWindow({
+    this.#window = new MainWindow({
       url,
       preload: paths.hostPreload,
       icon: paths.icon,
-      onTray: (state) => this.#tray?.update(state),
-      onOpenConnection: () => {
-        this.#changeConnection().catch((error: unknown) => dialog.showErrorBox('openICQ', describe(error)));
+      startHidden: this.#preferences.launchMinimized,
+      onUnread: (count) => {
+        this.#tray?.setUnread(count);
+        app.setBadgeCount(count);
       },
+      onPreferences: (preferences) => this.#reportFailure(this.#applyPreferences(preferences)),
+      onOpenConnection: () => this.#reportFailure(this.#changeConnection()),
       onQuit: () => app.quit(),
-      onCrashed: (reason) => {
-        this.#crashed(reason).catch((error: unknown) => dialog.showErrorBox('openICQ', describe(error)));
-      },
+      onCrashed: (reason) => this.#reportFailure(this.#crashed(reason)),
     });
     try {
-      await this.#host.load();
+      await this.#window.load();
     } catch (error) {
       throw new Error(`openICQ cannot reach the server at ${url}.\n${describe(error)}`, { cause: error });
     }
   }
 
   async #closeConnection(): Promise<void> {
-    this.#host?.close();
-    this.#host = null;
+    this.#window?.close();
+    this.#window = null;
     const server = this.#server;
     this.#server = null;
     if (server) await withTimeout(server.close(), SHUTDOWN_TIMEOUT_MS, 'The openICQ server did not stop in time.');

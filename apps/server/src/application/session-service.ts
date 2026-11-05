@@ -1,54 +1,71 @@
-/** Starts a live session: announces presence and assembles the snapshot. */
-import type { SessionSnapshot, SettableStatus, Uin } from '@openicq/protocol';
+/**
+ * `session.start`: the snapshot the main window needs. Loading it counts as
+ * receiving every message so far, so delivery marks move (plan rule 9).
+ * The chat list is capped, so the work per snapshot stays bounded.
+ */
+import type { Chat, SessionSnapshot } from '@openicq/protocol';
 import type { Clock } from '../domain/ports.ts';
-import type { UserRepository } from '../domain/repositories.ts';
-import type { ContactService } from './contact-service.ts';
-import { toProfile, toSettings } from './mappers.ts';
-import type { MessagingService } from './messaging-service.ts';
-import type { PresenceService } from './presence-service.ts';
-import type { SettingsService } from './settings-service.ts';
+import type { ChatRepository, ContactRepository, MessageRepository, UserRepository } from '../domain/repositories.ts';
+import type { Uin } from '../domain/vocabulary.ts';
+import type { ChatEvents } from './chat-events.ts';
 import { requireUser } from './support.ts';
+import { chatRefs, type ViewBuilder } from './views.ts';
+
+/** Chats in one snapshot: every pinned chat, then the most recent ones. */
+export const SESSION_CHAT_LIMIT = 1000;
 
 export interface SessionServiceDeps {
   readonly users: UserRepository;
-  readonly presence: PresenceService;
-  readonly contacts: ContactService;
-  readonly messaging: MessagingService;
-  readonly settings: SettingsService;
+  readonly chats: ChatRepository;
+  readonly messages: MessageRepository;
+  readonly contacts: ContactRepository;
+  readonly views: ViewBuilder;
+  readonly events: ChatEvents;
   readonly clock: Clock;
 }
 
+/** A chat row with the member's pin position, which the row itself does not carry. */
+export interface ListedChat {
+  readonly chat: Chat;
+  readonly pinOrder: number | null;
+}
+
+/** Chat list order: pinned chats in pin order, then the most recent activity first. */
+export function compareChats(a: ListedChat, b: ListedChat): number {
+  if (a.pinOrder !== null && b.pinOrder !== null) return a.pinOrder - b.pinOrder;
+  if (a.pinOrder !== null) return -1;
+  if (b.pinOrder !== null) return 1;
+  if (a.chat.updatedAt !== b.chat.updatedAt) return a.chat.updatedAt < b.chat.updatedAt ? 1 : -1;
+  return b.chat.id - a.chat.id;
+}
+
 export class SessionService {
-  private readonly users: UserRepository;
-  private readonly presence: PresenceService;
-  private readonly contacts: ContactService;
-  private readonly messaging: MessagingService;
-  private readonly settings: SettingsService;
-  private readonly clock: Clock;
+  private readonly deps: SessionServiceDeps;
 
   constructor(deps: SessionServiceDeps) {
-    this.users = deps.users;
-    this.presence = deps.presence;
-    this.contacts = deps.contacts;
-    this.messaging = deps.messaging;
-    this.settings = deps.settings;
-    this.clock = deps.clock;
+    this.deps = deps;
   }
 
-  start(uin: Uin, status: SettableStatus): SessionSnapshot {
-    const user = requireUser(this.users, uin);
-    this.presence.connect(uin, status);
-    const unread = this.messaging.unread(uin);
+  start(uin: Uin): SessionSnapshot {
+    const { users, chats, messages, contacts, views, events, clock } = this.deps;
+    const user = requireUser(users, uin);
+    const rows: ListedChat[] = [];
+    for (const member of chats.listChatList(uin, SESSION_CHAT_LIMIT)) {
+      const chat = chats.findById(member.chatId);
+      if (chat === null) throw new Error(`Membership of ${uin} points to missing chat ${member.chatId}`);
+      const lastId = messages.maxId(chat.id);
+      if (lastId > member.lastDeliveredId) events.markDelivered(chat, uin, lastId);
+      rows.push({ chat: views.chat(uin, chat, member), pinOrder: member.pinOrder });
+    }
+    const ordered = [...rows].sort(compareChats).map((entry) => entry.chat);
+    const contactList = contacts.list(uin);
     return {
-      self: toProfile(user, uin),
-      settings: toSettings(user),
-      status,
-      contacts: this.contacts.list(uin),
-      notices: this.contacts.listNotices(uin),
-      unread,
-      notInList: this.messaging.notInList(uin, unread),
-      ignored: this.settings.listIgnored(uin),
-      serverTime: this.clock.now().toISOString(),
+      me: views.me(user),
+      settings: { groupInvites: user.groupInvites },
+      chats: ordered,
+      users: views.users(uin, [...ordered.flatMap(chatRefs), ...contactList]),
+      contacts: contactList,
+      serverTime: clock.now().toISOString(),
     };
   }
 }

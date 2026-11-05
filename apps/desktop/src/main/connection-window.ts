@@ -17,17 +17,17 @@ export interface ConnectionWindowOptions {
 export function askForConnection(options: ConnectionWindowOptions): Promise<ConnectionConfig | null> {
   return new Promise((resolve) => {
     const win = new BrowserWindow({
-      width: 400,
-      height: 330,
+      width: 440,
+      height: 430,
       useContentSize: true,
-      frame: false,
       resizable: false,
       maximizable: false,
+      minimizable: false,
       fullscreenable: false,
-      roundedCorners: false,
+      autoHideMenuBar: true,
       show: false,
-      title: 'openICQ Connection Settings',
-      backgroundColor: '#c0c0c0',
+      title: 'Connection settings',
+      backgroundColor: '#ffffff',
       icon: options.icon,
       webPreferences: { preload: options.preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
     });

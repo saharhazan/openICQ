@@ -59,8 +59,9 @@ const NORMAL_CLOSE = 1000;
 /** After these close codes the server does not want us back without a new sign-in. */
 const NO_RECONNECT_CODES: ReadonlySet<number> = new Set([
   CLOSE_CODES.unauthorized,
-  CLOSE_CODES.otherLocation,
+  CLOSE_CODES.sessionClosed,
   CLOSE_CODES.signedOut,
+  CLOSE_CODES.protocolViolation,
 ]);
 
 /** Builds the same-origin WebSocket URL for a path such as WS_PATH. */

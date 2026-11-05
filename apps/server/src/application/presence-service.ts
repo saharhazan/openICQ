@@ -1,89 +1,63 @@
 /**
- * Live presence. Every change is published to the connected watchers of the
- * user, each with the status as visible to that watcher, and only when it
- * actually changed for them.
+ * Presence (plan rule 3): online while at least one connection is started,
+ * `lastSeen` set when the last one closes. Changes go to everyone who shares a
+ * direct chat or a group with the user and to everyone who saved them as a
+ * contact, except the users they blocked (who always see them offline).
  */
-import { hasStatusMessage, type SettableStatus, type Status, type Uin } from '@openicq/protocol';
-import type { ContactRecord } from '../domain/entities.ts';
-import type { Clock, Notifier, PresenceRegistry } from '../domain/ports.ts';
-import type { ContactRepository, UserRepository } from '../domain/repositories.ts';
-import { requireUser } from './support.ts';
-import type { VisibilityResolver } from './visibility-resolver.ts';
+import type { Presence } from '@openicq/protocol';
+import type { Clock, Notifier } from '../domain/ports.ts';
+import type { BlockRepository, ChatRepository, ContactRepository, UserRepository } from '../domain/repositories.ts';
+import type { Uin } from '../domain/vocabulary.ts';
+import { requireUser, unique } from './support.ts';
 
 export interface PresenceServiceDeps {
-  readonly presence: PresenceRegistry;
-  readonly contacts: ContactRepository;
   readonly users: UserRepository;
+  readonly chats: ChatRepository;
+  readonly contacts: ContactRepository;
+  readonly blocks: BlockRepository;
   readonly notifier: Notifier;
   readonly clock: Clock;
-  readonly visibility: VisibilityResolver;
 }
 
 export class PresenceService {
-  private readonly presence: PresenceRegistry;
-  private readonly contacts: ContactRepository;
   private readonly users: UserRepository;
+  private readonly chats: ChatRepository;
+  private readonly contacts: ContactRepository;
+  private readonly blocks: BlockRepository;
   private readonly notifier: Notifier;
   private readonly clock: Clock;
-  private readonly visibility: VisibilityResolver;
 
   constructor(deps: PresenceServiceDeps) {
-    this.presence = deps.presence;
-    this.contacts = deps.contacts;
     this.users = deps.users;
+    this.chats = deps.chats;
+    this.contacts = deps.contacts;
+    this.blocks = deps.blocks;
     this.notifier = deps.notifier;
     this.clock = deps.clock;
-    this.visibility = deps.visibility;
   }
 
-  isConnected(uin: Uin): boolean {
-    return this.presence.statusOf(uin) !== null;
+  /** The first connection of the user started. */
+  cameOnline(uin: Uin): void {
+    const user = requireUser(this.users, uin);
+    this.publish(uin, { online: true, lastSeen: user.lastSeenAt });
   }
 
-  connect(uin: Uin, status: SettableStatus): void {
-    this.publish(uin, () => this.presence.set(uin, status));
+  /** The last connection of the user closed. */
+  wentOffline(uin: Uin): void {
+    const at = this.clock.now().toISOString();
+    this.users.touchLastSeen(uin, at);
+    this.publish(uin, { online: false, lastSeen: at });
   }
 
-  /** Sets the status; a message given with a status that carries one (away-like or FFC) is stored for it. */
-  setStatus(uin: Uin, status: SettableStatus, awayMessage?: string): Status {
-    if (awayMessage !== undefined && hasStatusMessage(status)) {
-      const user = requireUser(this.users, uin);
-      this.users.updateSettings(uin, { ...user, awayMessages: { ...user.awayMessages, [status]: awayMessage } });
-    }
-    this.publish(uin, () => this.presence.set(uin, status));
-    return status;
+  /** Who is told about the user's presence and profile changes. */
+  audience(uin: Uin): Uin[] {
+    const blocked = new Set(this.blocks.list(uin));
+    return unique([...this.chats.listCoMembers(uin), ...this.contacts.ownersOf(uin)]).filter(
+      (viewer) => viewer !== uin && !blocked.has(viewer),
+    );
   }
 
-  disconnect(uin: Uin): void {
-    this.publish(uin, () => this.presence.remove(uin));
-    this.users.touchLastSeen(uin, this.clock.now().toISOString());
-  }
-
-  /**
-   * Runs `change` (for example an ignore list edit) and tells `viewer` about
-   * the new status of `target` if the change altered what the viewer sees.
-   */
-  refreshView(viewer: Uin, target: Uin, change: () => void): void {
-    const entry = this.contacts.findActive(viewer, target);
-    if (entry === null || !this.isConnected(viewer)) {
-      change();
-      return;
-    }
-    const before = this.visibility.statusOfEntry(entry);
-    change();
-    this.notifyIfChanged(entry, before);
-  }
-
-  private publish(target: Uin, change: () => void): void {
-    const watchers = this.contacts.listWatchers(target).filter((entry) => this.isConnected(entry.ownerUin));
-    const before = watchers.map((entry) => this.visibility.statusOfEntry(entry));
-    change();
-    watchers.forEach((entry, index) => this.notifyIfChanged(entry, before[index]));
-  }
-
-  private notifyIfChanged(entry: ContactRecord, before: Status | undefined): void {
-    const after = this.visibility.statusOfEntry(entry);
-    if (after === before) return;
-    this.notifier.notify(entry.ownerUin, { type: 'presence', uin: entry.contactUin, status: after });
+  private publish(uin: Uin, presence: Presence): void {
+    for (const viewer of this.audience(uin)) this.notifier.notify(viewer, { type: 'presence', uin, presence });
   }
 }

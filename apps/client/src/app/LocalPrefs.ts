@@ -1,25 +1,17 @@
-import { uinSchema, type Uin } from '@openicq/protocol';
 import { z } from 'zod';
-import type { WindowKind, WindowRect } from '../state/windows';
+import { parsePrefs, type DevicePrefs } from './devicePrefs';
 
-type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
+type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-const RECENT_KEY = 'icq.recentUins';
-const RECT_KEY_PREFIX = 'icq.window.';
-const MAX_RECENT = 8;
+const PREFS_KEY = 'openicq.prefs';
+const DRAFTS_PREFIX = 'openicq.drafts.';
+const DRAFT_MAX = 10_000;
 
-const recentSchema = z.array(uinSchema).max(MAX_RECENT);
-const rectSchema = z.object({
-  x: z.number().finite(),
-  y: z.number().finite(),
-  width: z.number().positive().nullable(),
-  height: z.number().positive().nullable(),
-});
+const draftsSchema = z.record(z.string().regex(/^\d+$/), z.string().max(DRAFT_MAX));
 
 /**
- * Per-browser conveniences kept in localStorage: recently used ICQ numbers
- * and window positions. Never passwords. Every failure goes to `onError`
- * and the app keeps working without the stored value.
+ * Per-device settings and per-account drafts in localStorage. Never passwords.
+ * Every failure goes to `onError` and the app keeps working without the value.
  */
 export class LocalPrefs {
   readonly #storage: () => StorageLike;
@@ -30,52 +22,67 @@ export class LocalPrefs {
     this.#onError = onError;
   }
 
-  recentUins(): Uin[] {
-    return this.#read(RECENT_KEY, recentSchema) ?? [];
+  loadPrefs(): DevicePrefs {
+    return parsePrefs(this.#read(PREFS_KEY));
   }
 
-  rememberUin(uin: Uin): void {
-    const next = [uin, ...this.recentUins().filter((u) => u !== uin)].slice(0, MAX_RECENT);
-    this.#write(RECENT_KEY, next);
+  savePrefs(prefs: DevicePrefs): void {
+    this.#write(PREFS_KEY, prefs);
   }
 
-  windowRect(kind: WindowKind): WindowRect | null {
-    return this.#read(RECT_KEY_PREFIX + kind, rectSchema);
+  loadDrafts(uin: number): Record<number, string> {
+    const raw = this.#read(DRAFTS_PREFIX + uin);
+    if (raw === null) return {};
+    const parsed = draftsSchema.safeParse(raw);
+    if (!parsed.success) {
+      this.#onError(new Error('Saved drafts are invalid and were ignored.', { cause: parsed.error }));
+      return {};
+    }
+    const drafts: Record<number, string> = {};
+    for (const [id, text] of Object.entries(parsed.data)) drafts[Number(id)] = text;
+    return drafts;
   }
 
-  saveWindowRect(kind: WindowKind, rect: WindowRect): void {
-    this.#write(RECT_KEY_PREFIX + kind, rect);
+  saveDrafts(uin: number, drafts: Readonly<Record<number, string>>): void {
+    if (Object.keys(drafts).length === 0) {
+      this.#remove(DRAFTS_PREFIX + uin);
+      return;
+    }
+    const trimmed: Record<string, string> = {};
+    for (const [id, text] of Object.entries(drafts)) trimmed[id] = text.slice(0, DRAFT_MAX);
+    this.#write(DRAFTS_PREFIX + uin, trimmed);
   }
 
-  #read<S extends z.ZodType>(key: string, schema: S): z.output<S> | null {
+  #read(key: string): unknown {
     let raw: string | null;
     try {
       raw = this.#storage().getItem(key);
     } catch (error) {
-      this.#onError(new Error('ICQ cannot read saved settings in this browser.', { cause: error }));
+      this.#onError(new Error('openICQ cannot read saved settings in this browser.', { cause: error }));
       return null;
     }
     if (raw === null) return null;
-    let json: unknown;
     try {
-      json = JSON.parse(raw);
+      return JSON.parse(raw) as unknown;
     } catch (error) {
       this.#onError(new Error(`Saved value "${key}" is unreadable and was ignored.`, { cause: error }));
       return null;
     }
-    const parsed = schema.safeParse(json);
-    if (!parsed.success) {
-      this.#onError(new Error(`Saved value "${key}" is invalid and was ignored.`, { cause: parsed.error }));
-      return null;
-    }
-    return parsed.data;
   }
 
   #write(key: string, value: unknown): void {
     try {
       this.#storage().setItem(key, JSON.stringify(value));
     } catch (error) {
-      this.#onError(new Error('ICQ cannot save settings in this browser.', { cause: error }));
+      this.#onError(new Error('openICQ cannot save settings in this browser.', { cause: error }));
+    }
+  }
+
+  #remove(key: string): void {
+    try {
+      this.#storage().removeItem(key);
+    } catch (error) {
+      this.#onError(new Error('openICQ cannot save settings in this browser.', { cause: error }));
     }
   }
 }

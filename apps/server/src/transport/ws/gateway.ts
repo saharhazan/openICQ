@@ -2,7 +2,7 @@
  * WebSocket gateway: authenticates the upgrade, wires socket events to the
  * router and the connection lifecycle, and runs the heartbeat.
  */
-import { CLOSE_CODES, SESSION_COOKIE, type ServerFrame } from '@openicq/protocol';
+import { CLOSE_CODES, SESSION_COOKIE } from '@openicq/protocol';
 import type { FastifyBaseLogger, FastifyRequest } from 'fastify';
 import type { RawData, WebSocket } from 'ws';
 import type { AuthService } from '../../application/auth-service.ts';
@@ -52,10 +52,11 @@ export class WebSocketGateway {
       return;
     }
     const connection = new ClientConnection({
+      id: this.deps.connections.newConnectionId(),
       socket,
       uin: session.uin,
-      tokenHash: session.tokenHash,
-      log: request.log.child({ uin: session.uin }),
+      sessionId: session.sessionId,
+      log: request.log.child({ uin: session.uin, sessionId: session.sessionId }),
     });
     this.deps.connections.track(connection);
     socket.on('message', (data, isBinary) => this.onMessage(connection, data, isBinary));
@@ -84,10 +85,12 @@ export class WebSocketGateway {
     this.deps.lifecycle.shutdown();
   }
 
+  /** Text JSON frames only: a binary frame is a protocol violation and closes the socket with 4004. */
   private onMessage(connection: ClientConnection, data: RawData, isBinary: boolean): void {
     if (isBinary) {
-      const frame: ServerFrame = errorFrame(null, 'bad_request', 'Binary frames are not supported.');
-      connection.send(frame);
+      connection.log.info('binary frame, closing websocket');
+      connection.send(errorFrame(null, 'bad_request', 'Binary frames are not supported.'));
+      connection.close(CLOSE_CODES.protocolViolation, 'Binary frames are not supported');
       return;
     }
     this.deps.router.handle(connection, rawDataToString(data)).catch((error: unknown) => {
@@ -101,7 +104,7 @@ export class WebSocketGateway {
         if (!connection.ping()) {
           connection.log.info('terminating unresponsive websocket');
           connection.terminate();
-        } else if (this.deps.auth.resume(connection.tokenHash) === null) {
+        } else if (this.deps.auth.resume(connection.sessionId) === null) {
           connection.log.info('session ended, closing websocket');
           connection.close(CLOSE_CODES.unauthorized, 'Session expired');
         }

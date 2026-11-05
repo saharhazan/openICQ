@@ -2,11 +2,6 @@ import { expect, type Browser, type Locator, type Page } from '@playwright/test'
 
 export const PASSWORD = 'secret123';
 
-/** An ICQ window is an ARIA dialog named by its title bar. */
-export function win(page: Page, title: string | RegExp): Locator {
-  return page.getByRole('dialog', { name: title });
-}
-
 /** Collects page errors and unexpected console errors so a test can assert none happened. */
 export function trackErrors(page: Page, label: string, sink: string[]): void {
   page.on('pageerror', (error) => sink.push(`${label} pageerror: ${error.message}`));
@@ -21,75 +16,77 @@ export async function openUser(browser: Browser, label: string, sink: string[]):
   const page = await context.newPage();
   trackErrors(page, label, sink);
   await page.goto('/');
-  await expect(win(page, 'Connect to The ICQ Network')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in by password' })).toBeVisible();
   return page;
 }
 
-/** Fills the "ICQ Registration" wizard (already open) and returns the new UIN. */
-export async function completeRegistration(
-  wizard: Locator,
-  nick: string,
-  options: { authRequired: boolean },
-  /** How to press the last Next, which closes the wizard (a native window in the desktop app). */
-  finish: (button: Locator) => Promise<void> = (button) => button.click(),
-): Promise<number> {
-  await expect(wizard).toBeVisible();
-  await wizard.getByRole('button', { name: 'NEW ICQ#' }).click();
-  await wizard.getByLabel('First Name:').fill(nick);
-  await wizard.getByLabel('Last Name:').fill('Tester');
-  await wizard.getByLabel('Nickname:').fill(nick);
-  await wizard.getByLabel('Email (i.e. john@isp.com):').fill(`${nick.toLowerCase()}@example.com`);
-  await wizard.getByLabel('Password:', { exact: true }).fill(PASSWORD);
-  await wizard.getByLabel('Confirm Password:').fill(PASSWORD);
-  await wizard.getByRole('button', { name: 'Next' }).click();
-  const uinText = await wizard.getByTestId('new-uin').textContent();
-  const uin = Number(uinText?.trim());
+/** Sign up (name, nickname, password), note the new ICQ number, pass "Introduce yourself", land in Chats. */
+export async function signUp(page: Page, first: string, last: string, nickname: string): Promise<number> {
+  await page.getByRole('button', { name: 'Sign up' }).click();
+  await expect(page.getByRole('heading', { name: 'Create an account' })).toBeVisible();
+  await page.getByLabel('First name', { exact: true }).fill(first);
+  await page.getByLabel('Last name', { exact: true }).fill(last);
+  await page.getByLabel('Nickname (optional)').fill(nickname);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign up' }).click();
+  await expect(page.getByRole('heading', { name: 'Your ICQ number' })).toBeVisible();
+  const label = await page.getByLabel(/^ICQ# \d+$/).getAttribute('aria-label');
+  const uin = Number(label?.split(' ')[1]);
   expect(Number.isInteger(uin)).toBe(true);
-  if (options.authRequired) {
-    await wizard.getByText('My authorization is required before users add me to their Contact List').click();
-  }
-  await finish(wizard.getByRole('button', { name: 'Next' }));
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('heading', { name: 'Add a name and avatar' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(chatList(page)).toBeVisible();
   return uin;
 }
 
-/** Runs the "ICQ Registration" wizard and returns the new UIN once the Contact List is up. */
-export async function register(page: Page, nick: string, options: { authRequired: boolean }): Promise<number> {
-  await page.getByRole('button', { name: 'Register A New User' }).click();
-  const uin = await completeRegistration(win(page, 'ICQ Registration'), nick, options);
-  await expect(win(page, String(uin))).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Status: Online' })).toBeVisible();
-  return uin;
+export async function signIn(page: Page, login: string): Promise<void> {
+  await page.getByLabel('Login', { exact: true }).fill(login);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(chatList(page)).toBeVisible();
 }
 
-export async function login(page: Page, uin: number): Promise<void> {
-  const dialog = win(page, 'Connect to The ICQ Network');
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('combobox', { name: 'ICQ#' }).fill(String(uin));
-  await dialog.getByLabel('Password:').fill(PASSWORD);
-  await dialog.getByRole('button', { name: 'OK' }).click();
-  await expect(win(page, String(uin))).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Status: Online' })).toBeVisible();
+export function chatList(page: Page): Locator {
+  return page.getByRole('listbox', { name: 'Chats' });
 }
 
-/** Picks a status from the status button menu. */
-export async function chooseStatus(page: Page, menuItem: string): Promise<void> {
-  await page.getByRole('button', { name: /^Status:/ }).click();
-  await page.getByRole('menuitem', { name: menuItem, exact: true }).click();
+export function chatRow(page: Page, title: string): Locator {
+  return chatList(page).getByRole('option', { name: new RegExp(title) });
 }
 
-export function contact(page: Page, nick: string): Locator {
-  return page.getByRole('option', { name: new RegExp(nick) });
+export function history(page: Page, title: string): Locator {
+  return page.getByRole('log', { name: `Messages with ${title}` });
 }
 
-export async function openMessageSession(page: Page, nick: string): Promise<Locator> {
-  await contact(page, nick).dblclick();
-  const session = win(page, new RegExp(`^${nick} .*Message Session`));
-  await expect(session).toBeVisible();
-  return session;
+/** The bubble row of the message with this text. */
+export function bubble(page: Page, title: string, text: string): Locator {
+  return history(page, title).locator('[data-message-id]', { hasText: text }).last();
 }
 
-export async function sendWithCtrlEnter(session: Locator, text: string): Promise<void> {
-  const box = session.getByRole('textbox', { name: 'Message' });
+/** Types into the input and sends with Enter (the ICQ New default). */
+export async function send(page: Page, text: string): Promise<void> {
+  const box = page.getByRole('textbox', { name: 'Message' });
   await box.fill(text);
-  await box.press('Control+Enter');
+  await box.press('Enter');
+}
+
+/** Opens the message menu (right click on the bubble) and picks an item. */
+export async function messageAction(page: Page, title: string, text: string, item: string): Promise<void> {
+  await bubble(page, title, text).locator('.bubble').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: item, exact: true }).click();
+}
+
+/** "Write" > "Add contact": finds a user by nickname, adds them and opens the chat. */
+export async function addContactAndOpen(page: Page, nickname: string, name: string): Promise<void> {
+  await page.getByRole('button', { name: 'Write' }).click();
+  await page.getByRole('menuitem', { name: 'Add contact' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add contact' });
+  await dialog.getByLabel('Nickname or ICQ#').fill(nickname);
+  await dialog.getByRole('button', { name: 'Find' }).click();
+  const row = dialog.getByRole('listitem', { name });
+  await row.getByRole('button', { name: 'Add' }).click();
+  await expect(row).toContainText('The user has already been added earlier');
+  await row.getByRole('button', { name: 'Message' }).click();
+  await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible();
 }

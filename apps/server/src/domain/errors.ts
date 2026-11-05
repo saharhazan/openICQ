@@ -14,3 +14,14 @@ export class DomainError extends Error {
     this.code = code;
   }
 }
+
+/** Raised by file storage when an upload goes over the size limit. Nothing is kept on disk. */
+export class FileTooLargeError extends Error {
+  readonly maxBytes: number;
+
+  constructor(maxBytes: number) {
+    super(`The upload is larger than ${maxBytes} bytes`);
+    this.name = 'FileTooLargeError';
+    this.maxBytes = maxBytes;
+  }
+}

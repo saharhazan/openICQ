@@ -101,13 +101,13 @@ describe('IcqConnection', () => {
 
   it('keeps concurrent requests apart', async () => {
     const { connection, latest } = await connected();
-    const first = connection.request('status.set', { status: 'away' });
-    const second = connection.request('status.set', { status: 'dnd' });
+    const first = connection.request('nickname.check', { nickname: 'first.one' });
+    const second = connection.request('nickname.check', { nickname: 'second.one' });
     const [a, b] = latest().sent;
-    latest().receive({ kind: 'result', replyTo: b?.id, result: { status: 'dnd' } });
-    latest().receive({ kind: 'result', replyTo: a?.id, result: { status: 'away' } });
-    await expect(first).resolves.toEqual({ status: 'away' });
-    await expect(second).resolves.toEqual({ status: 'dnd' });
+    latest().receive({ kind: 'result', replyTo: b?.id, result: { available: false, reason: 'taken' } });
+    latest().receive({ kind: 'result', replyTo: a?.id, result: { available: true, reason: null } });
+    await expect(first).resolves.toEqual({ available: true, reason: null });
+    await expect(second).resolves.toEqual({ available: false, reason: 'taken' });
   });
 
   it('rejects with the server error code', async () => {
@@ -131,7 +131,7 @@ describe('IcqConnection', () => {
     connection.onProblem((e) => problems.push(e));
     connection.onEvent((e) => events.push(e));
     latest().receive('not json');
-    latest().receive({ kind: 'event', event: { type: 'presence', uin: 'abc', status: 'online' } });
+    latest().receive({ kind: 'event', event: { type: 'presence', uin: 'abc', presence: { online: true, lastSeen: null } } });
     latest().receive({ kind: 'mystery' });
     expect(problems.map((p) => p.code)).toEqual(['invalid_response', 'invalid_response', 'invalid_response']);
     expect(events).toEqual([]);
@@ -141,8 +141,9 @@ describe('IcqConnection', () => {
     const { connection, latest } = await connected();
     const events: unknown[] = [];
     connection.onEvent((e) => events.push(e));
-    latest().receive({ kind: 'event', event: { type: 'presence', uin: 123456, status: 'away' } });
-    expect(events).toEqual([{ type: 'presence', uin: 123456, status: 'away' }]);
+    const event = { type: 'presence', uin: 123456, presence: { online: false, lastSeen: '2026-11-05T10:00:00.000Z' } };
+    latest().receive({ kind: 'event', event });
+    expect(events).toEqual([event]);
   });
 
   it('times out a request that gets no answer', async () => {
@@ -155,7 +156,7 @@ describe('IcqConnection', () => {
 
   it('validates the payload before sending', async () => {
     const { connection, latest } = await connected();
-    await expect(connection.request('message.send', { to: 123456, text: '   ' })).rejects.toMatchObject({ code: 'bad_request' });
+    await expect(connection.request('message.send', { chatId: 5, clientId: '', text: 'hi' })).rejects.toMatchObject({ code: 'bad_request' });
     expect(latest().sent).toHaveLength(0);
   });
 
@@ -188,7 +189,7 @@ describe('IcqConnection', () => {
     expect(reconnected).toHaveBeenCalledTimes(1);
   });
 
-  it.each([4001, 4002, 4003])('does not reconnect after close code %i', async (code) => {
+  it.each([4001, 4002, 4003, 4004])('does not reconnect after close code %i', async (code) => {
     const { connection, sockets, latest } = await connected();
     const states: string[] = [];
     connection.onStateChange((s, info) => states.push(`${s}:${info?.willReconnect ?? ''}`));

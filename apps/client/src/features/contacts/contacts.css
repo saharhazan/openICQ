@@ -1,0 +1,57 @@
+/* The Contacts tab and the Add contact dialog. */
+
+.contacts-tab {
+  display: flex;
+  flex-direction: column;
+}
+
+.add-contact-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.add-contact-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--base-globalwhite);
+}
+
+.contacts-mini .contact-row {
+  justify-content: center;
+  padding: 0;
+}
+
+.contact-online {
+  color: var(--text-primary);
+}
+
+.found-list {
+  margin: 0 -20px;
+  padding: 0;
+  list-style: none;
+}
+
+.found-row {
+  padding: 0 20px;
+  cursor: default;
+}
+
+.found-row .text-button {
+  flex: none;
+}
+
+.found-note {
+  flex: none;
+  max-width: 120px;
+  font-size: calc(12px + var(--fs));
+  color: var(--base-primary);
+  text-align: right;
+}

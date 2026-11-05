@@ -1,0 +1,209 @@
+/* Chat rows (RecentItemDelegate.cpp, contact_list/Common.h): 72 / 52 avatar, compact 48 / 32. */
+
+.chat-list {
+  outline: none;
+  padding-bottom: 8px;
+}
+
+.chat-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 72px;
+  padding: 0 12px 0 8px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.chat-row:hover {
+  background: var(--base-bright-inverse);
+}
+
+.chat-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.chat-row-selected,
+.chat-row-selected:hover {
+  background: var(--primary-selected);
+  color: var(--text-solid-permanent);
+}
+
+.chat-row-compact {
+  height: 48px;
+  padding: 0 12px;
+  gap: 12px;
+}
+
+.chat-row-mini {
+  justify-content: center;
+  height: 64px;
+  padding: 0;
+}
+
+.chat-row-avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.chat-row-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-row-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(16px + var(--fs));
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.chat-row-time {
+  font-size: calc(12px + var(--fs));
+  color: var(--base-tertiary);
+}
+
+.chat-row-selected .chat-row-time,
+.chat-row-selected .chat-row-flag,
+.chat-row-selected .tick {
+  color: var(--text-solid-permanent);
+}
+
+.chat-row-flag {
+  flex: none;
+  color: var(--base-tertiary);
+}
+
+.chat-row-preview {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: calc(14px + var(--fs));
+  line-height: 20px;
+  color: var(--base-secondary);
+  word-break: break-word;
+}
+
+.chat-row-preview-unread {
+  color: var(--base-primary);
+}
+
+.chat-row-selected .chat-row-preview {
+  color: var(--text-solid-permanent);
+}
+
+.chat-row-sender {
+  color: var(--text-solid);
+}
+
+.chat-row-selected .chat-row-sender {
+  color: var(--text-solid-permanent);
+}
+
+.chat-row-draft {
+  color: var(--secondary-attention);
+  font-weight: 600;
+}
+
+.chat-row-selected .chat-row-draft {
+  color: var(--text-solid-permanent);
+}
+
+.chat-row-typing {
+  color: var(--text-primary);
+}
+
+.chat-row-selected .chat-row-typing {
+  color: var(--text-solid-permanent);
+}
+
+.row-head {
+  display: inline-flex;
+}
+
+/* Unread badge: a pill 20 high, primary (base_tertiary when muted), 13 px SemiBold. */
+.unread-pill {
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--base-globalwhite);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
+.unread-muted {
+  background: var(--base-tertiary);
+}
+
+.chat-row-selected .unread-pill {
+  background: var(--base-globalwhite);
+  color: var(--primary-selected);
+}
+
+.unread-compact {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.chat-row-compact .chat-row-meta {
+  margin-right: 0;
+}
+
+.chat-row-compact:has(.unread-compact) .chat-row-meta {
+  margin-right: 28px;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--base-globalwhite);
+}
+
+.tick {
+  display: inline-flex;
+  color: var(--base-primary);
+}
+
+.tick-failed {
+  color: var(--secondary-attention);
+}

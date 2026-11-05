@@ -5,8 +5,8 @@
 <h1 align="center">openICQ</h1>
 
 <p align="center">
-  The classic ICQ 2001b messenger, rebuilt from scratch and open source.<br />
-  Native on Windows, macOS and Linux, and it also runs in any browser.
+  The last ICQ, ICQ New (2020 to 2024), rebuilt from scratch and open source.<br />
+  A desktop app for Windows, macOS and Linux, and a web app for any browser, with your own server.
 </p>
 
 <p align="center">
@@ -23,28 +23,43 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a>
 </p>
 
-![openICQ on macOS: a message session and the Contact List as native windows](docs/screenshots/desktop-macos.png)
+![openICQ: a chat in the ICQ New design](docs/screenshots/web-chat.png)
 
-openICQ brings back the look, the sounds and the habits of ICQ 2001b: the tall Contact List with its flower, the status menu, Away messages with auto-responses, "Uh-oh!" on every new message, System Notices for authorization, and your own ICQ# (UIN). It is not a mockup. A real server stores accounts, contacts, offline messages and history, and every client talks to it in real time.
+ICQ shut down on 26 June 2024. Its last version, ICQ New 23.2.0, was a modern messenger: a chat list next to the conversation, green bubbles, groups, reactions, and the "uh-oh" sound. openICQ brings it back as something you own. You run the server, on your computer, at home or on a VPS, and everyone you invite gets their own ICQ number.
+
+It is not a mockup. A real server stores accounts, chats, groups, files and history, and every client talks to it in real time.
 
 ## Features
 
-- **Your own ICQ#**: sequential numbers from 100000, registration wizard, "Save password".
-- **Contact List**: Online, Offline and Not In List groups, renaming, deleting, the blinking message balloon.
-- **All eight statuses**: Online, Free For Chat, Away, N/A, Occupied, DND, Invisible, Offline, with the original menu captions.
-- **Away messages**: set per status with the countdown dialog, and shown to the sender as an auto-response.
-- **Occupied and DND**: the original "Send Urgent / Send To Contact List" choice.
-- **Authorization**: requests, grants and refusals as System Notices; "My authorization is required" per account.
-- **Messages**: real-time delivery, offline messages delivered on the next sign-in, the 450 character limit, history with paging, clickable links.
-- **Find users** by ICQ#, email or details; user info; ignore list; password change; Web Aware.
-- **Auto-away** after 10 minutes and N/A after another 20. The desktop app watches the whole computer, the browser watches the page.
-- **One sign-in at a time**: signing in elsewhere shows "Your ICQ# is being used on another computer".
-- **Desktop app**: every ICQ window is a native window (frameless, Win98 style, on every OS). openICQ lives in the system tray or menu bar with the status flower, shows an unread badge and flashes or bounces on new messages.
+- **Your ICQ number**: sign up with a name and a password, and get a sequential ICQ# (from 100000). Sign in with the ICQ# or your email. "Keep me signed in".
+- **Chats**:
+  - The chat list has Favorites pinned on top, pinning, unread counters, mute, "Mark as unread", "Clear history", drafts, and "is typing...".
+  - Search covers your chats, your contacts and people on the server.
+- **Messages**:
+  - Bubbles with the original metrics, date pills, "New messages", and delivery ticks with read avatars.
+  - Reply, forward, edit ("edited"), delete for me or for everyone.
+  - The six ICQ New reactions, an emoji picker, multi-select.
+- **Files and images**: attach, drag and drop (Quick send or with a caption), paste, image previews and a viewer.
+- **Groups**:
+  - Creator, Admin, member and Read only roles; adding members; invite links (copy, generate new).
+  - Join with approval, and the original service messages.
+- **Contacts and profiles**:
+  - Add by nickname or ICQ#. Profile with avatar, name, "About me" and a nickname (checked live).
+  - Blocking.
+- **Settings**:
+  - General, Notifications (sounds, desktop notifications, hide text or sender), and Privacy ("Who can add me to groups", Session List).
+  - Appearance (Green and Dark Green themes, font size, compact chat list), Shortcuts (send by Enter, Ctrl+Enter or Shift+Enter).
+- **Several devices**: sign in on many devices at once; close any session from Session List.
+- **Desktop app**:
+  - One main window (1000 x 600, as in ICQ New) that hides to the tray on close, with an unread badge and native notifications.
+  - "Launch when system starts", and a server built in.
 
-| In the browser | |
+| | |
 |---|---|
-| ![A chat in the web client, on the teal Windows desktop](docs/screenshots/web-chat.png) | ![The Away auto-response](docs/screenshots/web-away.png) |
-| ![The Main menu](docs/screenshots/web-menu.png) | ![Connect to The ICQ Network](docs/screenshots/web-login.png) |
+| ![A group chat with service messages and reactions](docs/screenshots/web-group.png) | ![Dark Green theme](docs/screenshots/web-dark.png) |
+| ![Settings and My profile](docs/screenshots/web-settings.png) | ![Sign in by password](docs/screenshots/web-sign-in.png) |
+
+![The desktop app on macOS](docs/screenshots/desktop-app.png)
 
 ## Install
 
@@ -67,12 +82,12 @@ The builds are not signed with a paid certificate, so each system asks once befo
 
 ### First start
 
-openICQ asks how to reach the ICQ network:
+openICQ asks how to connect:
 
-- **Host a server on this computer**: the app runs the openICQ server itself. Tick **Let other computers on my network connect** and the dialog shows the address your friends type in.
-- **Connect to a server**: enter the address of an openICQ server, for example a friend's computer (`192.168.1.20:5190`) or a server on the internet (`chat.example.com`).
+- **Host a server on this computer**: the app runs the openICQ server itself, and your chats are stored on this computer. Tick **Let other computers on my network connect** and the dialog shows the address your friends type in.
+- **Connect to a server**: enter the address of an openICQ server, for example a friend's computer (`192.168.1.20:5190`) or a server on the internet (`chat.example.com`, which uses HTTPS).
 
-You can change this later from the tray menu, under **Connection Settings...**. Then register a new ICQ#, add your friends by their ICQ# and start chatting.
+You can change this later from the tray menu (**Connection Settings...**) or in Settings, General. Then sign up, add your friends by nickname or ICQ#, and start chatting.
 
 ## Run a server
 
@@ -82,10 +97,11 @@ For a server that is always on (a home server, a NAS, a VPS):
 docker compose -f docker/compose.yaml up -d
 ```
 
-Then open `http://localhost:5190`, or point the desktop app at this machine. The database lives in the `openicq-data` volume. Before you put the server on the internet:
+Then open `http://localhost:5190`, or point the desktop app at this machine. Everything is stored in the `openicq-data` volume. Before you put the server on the internet:
 
 - List every address people use in `ALLOWED_ORIGINS` (for example `https://chat.example.com`).
 - Serve it over HTTPS, for example behind Caddy or nginx, and set `COOKIE_SECURE=true`.
+- Check the storage limits: `MAX_FILE_BYTES` (one file, default 100 MB), `MAX_USER_STORAGE_BYTES` (per user, default 2 GB) and `MAX_TOTAL_STORAGE_BYTES` (all files, default unlimited).
 
 Without Docker, with Node.js 26 and pnpm 10:
 
@@ -109,9 +125,9 @@ pnpm dist:desktop   # installers for the current OS into apps/desktop/release
 | Check | Command |
 |---|---|
 | Lint and types | `pnpm lint`, `pnpm typecheck` |
-| Unit and integration tests (241) | `pnpm test` |
-| Web end-to-end, two users in Chromium (10) | `pnpm test:e2e` |
-| Desktop end-to-end, two Electron apps (7) | `pnpm test:desktop` |
+| Unit and integration tests | `pnpm test` |
+| Web end-to-end, two users in Chromium | `pnpm test:e2e` |
+| Desktop end-to-end, two Electron apps | `pnpm test:desktop` |
 | README screenshots | `pnpm --filter @openicq/e2e screenshots` |
 
 GitHub Actions runs all of them, with the desktop tests on Windows, macOS and Linux. Pushing a `v*` tag builds the installers on each OS and publishes a release.
@@ -121,18 +137,14 @@ GitHub Actions runs all of them, with the desktop tests on Windows, macOS and Li
 ```mermaid
 flowchart LR
   subgraph Desktop["Desktop app (Electron)"]
-    Main["Main process<br/>windows, tray, idle,<br/>embedded server"]
-    Host["Hidden host page<br/>(the web client)"]
-    Win1["Contact List"]
-    Win2["Message Session"]
-    Host -- "portals" --> Win1
-    Host -- "portals" --> Win2
-    Host <-- "preload bridge" --> Main
+    Main["Main process<br/>window, tray, notifications,<br/>embedded server"]
+    Page["Main window<br/>(the web client)"]
+    Page <-- "preload bridge" --> Main
   end
   Browser["Browser<br/>(the same web client)"]
   Server["openICQ server<br/>Fastify + WebSocket"]
-  DB[("SQLite")]
-  Host <-- "REST + WebSocket" --> Server
+  DB[("SQLite + files")]
+  Page <-- "REST + WebSocket" --> Server
   Browser <-- "REST + WebSocket" --> Server
   Server --> DB
 ```
@@ -140,36 +152,48 @@ flowchart LR
 | Package | What it is |
 |---|---|
 | `packages/protocol` | The wire contract: zod schemas for every request, result and event, shared by client and server. |
-| `apps/server` | Fastify 5 with WebSockets and SQLite (`node:sqlite`). Layers: domain, application, infrastructure, transport. |
-| `apps/client` | React 19 + zustand + 98.css. One store and one connection. It renders every window into the page, or into native windows in the desktop app. |
-| `packages/desktop-bridge` | The contract between the desktop shell and the client, validated on both sides. |
-| `apps/desktop` | Electron 44. A hidden host page opens each ICQ window natively. Tray, system idle time, and the server embedded for "Host a server". |
+| `apps/server` | Fastify 5 with WebSockets, SQLite (`node:sqlite`) and file storage. Layers: domain, application, infrastructure, transport. Each event payload is built for its recipient (unread counts, "mine" reactions). |
+| `apps/client` | React 19 + zustand. The ICQ New design: theme tokens as CSS variables, Source Sans 3, a pure event reducer, optimistic sending. |
+| `packages/desktop-bridge` | The contract between the desktop shell and the client (notifications, unread badge, window state), validated on both sides. |
+| `apps/desktop` | Electron 44: the main window, tray, notifications, and the embedded server for "Host a server". |
 | `tests/e2e` | Playwright: two users in the browser, two desktop apps, and the screenshot generator. |
-
-TypeScript runs natively in Node 26 (type stripping). The desktop app is bundled with esbuild.
 
 ## How faithful is it?
 
-The look and the texts come from the original. The ICQ 2001b installer (build 3659, from the Internet Archive) was taken apart with [REA](https://github.com/morluto/rea) without running it. That gave the window layouts, sizes, menu captions, every message text and the sound mapping. The findings are in [`docs/research`](docs/research).
+The design and the behaviour come from the original. Our sources:
+
+- The official ICQ desktop client source ([mail-ru-im/im-desktop](https://github.com/mail-ru-im/im-desktop), Apache 2.0).
+- The final ICQ New 23.2.0 installers, examined with [REA](https://github.com/morluto/rea) without running them.
+- Archived help pages.
+
+From these come the exact theme colours, sizes, layout, menus in their original order, strings, sounds and behaviours. The findings are in [`docs/research`](docs/research). An earlier rebuild of ICQ 2001b is kept under the git tag `classic-2001b`.
 
 What differs, on purpose:
 
-- **Artwork and sounds**: icons are redrawn and sounds are synthesized, because the originals are copyrighted. No original artwork, sound or binary is part of this repository.
-- **History** is kept on the server, so it follows you to any computer (the original kept it on the PC).
-- **Left out**: features that need services that no longer exist (ICQ Services, the banner, chat rooms, file transfer, SMS).
-- **Unknown details**: where the installer did not reveal something (the exact menu order, some timings), the choice follows the original's logic and is marked in the research notes.
+- **Sign-in**: ICQ# or email and a password; there is no phone number and no SMS code.
+- **Calls**: voice and video calls are planned for a later version.
+- **Not in this version**: channels, voice messages, link previews and mentions.
+- **Artwork**: icons come from [Lucide](https://lucide.dev) (ISC) and emoji from your system. The original icons, stickers, emoji images, fonts and sounds are not used; the sounds are synthesized. The app icon is our own flower.
+- **Unknown details**: where the sources did not reveal something (edit time limits, file size limits), the choice is documented in the research notes and the architecture plan.
 
 ## Security
 
-- Passwords are hashed with scrypt. Sessions are random tokens stored only as SHA-256, in an HttpOnly, SameSite=Strict cookie.
-- Every request and event is validated with zod at the boundary.
-- A strict Content Security Policy is in place, and REST and WebSocket requests are checked against an origin allowlist. Messages, logins, registrations and password changes are rate-limited.
-- The desktop app uses sandboxed renderers with context isolation and no Node in the page. The main process validates every IPC message again. All web permissions are denied, and only http(s) links may open. Electron fuses are set: no `RunAsNode`, no `NODE_OPTIONS`, no `--inspect`, and asar integrity is checked.
+- **Accounts and sessions**:
+  - Passwords are hashed with scrypt. Sessions are random tokens stored only as SHA-256, in an HttpOnly, SameSite=Strict cookie.
+  - Every request and event is validated with zod at the boundary. Every chat, message, group and file action is checked against the user's membership and role.
+- **Files**:
+  - Images are recognized by their content.
+  - Downloads are served with `nosniff`, a sandboxing CSP and `attachment` for anything that is not an image.
+  - Storage quotas apply, and unattached uploads are cleaned up.
+- **Web**: a strict Content Security Policy and an origin allowlist. Messages, edits, reactions, uploads, logins, registrations and password changes are rate-limited.
+- **Desktop app**:
+  - Sandboxed renderer with context isolation and no Node in the page. Navigation stays on your server, and the main process validates every IPC message again.
+  - Electron fuses are set: no `RunAsNode`, no `NODE_OPTIONS`, no `--inspect`, and asar integrity is checked.
 
 Found a problem? Please open an issue, or a private security advisory for anything sensitive.
 
 ## Legal
 
-openICQ is an independent fan project. It is not affiliated with, endorsed by or connected to ICQ, AOL, Mail.ru or VK. "ICQ" and the flower logo are trademarks of their respective owners and are used here only to describe what this project recreates.
+openICQ is an independent fan project. It is not affiliated with, endorsed by or connected to ICQ, AOL, Mail.ru or VK. "ICQ" and its logos are trademarks of their respective owners and are used here only to describe what this project recreates.
 
-The code is released under the [MIT License](LICENSE). 98.css (MIT) provides the Windows 98 styles.
+The code is released under the [MIT License](LICENSE). It uses design values, strings and behaviour from the Apache 2.0 licensed ICQ desktop client, Source Sans 3 (SIL OFL 1.1), Lucide icons (ISC) and emojibase data (MIT); see [third-party notices](docs/licenses/THIRD_PARTY.md).

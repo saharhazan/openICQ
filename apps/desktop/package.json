@@ -21,7 +21,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "98.css": "0.1.21",
     "@openicq/client": "workspace:*",
     "@openicq/desktop-bridge": "workspace:*",
     "@openicq/protocol": "workspace:*",

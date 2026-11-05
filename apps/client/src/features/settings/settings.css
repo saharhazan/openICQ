@@ -1,0 +1,231 @@
+/* The Settings tab list and its pages (settings/SettingsTab.cpp and the page widgets). */
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px 8px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: calc(16px + var(--fs));
+  color: var(--text-solid);
+}
+
+.settings-row:hover {
+  background: var(--base-bright-inverse);
+}
+
+.settings-row[aria-current='page'] {
+  background: var(--primary-selected);
+  color: var(--text-solid-permanent);
+}
+
+.settings-profile {
+  min-height: 72px;
+  margin-bottom: 4px;
+}
+
+.settings-profile-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-profile-name {
+  font-size: calc(16px + var(--fs));
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-profile-sub {
+  font-size: calc(14px + var(--fs));
+  color: var(--base-primary);
+}
+
+.settings-row[aria-current='page'] .settings-profile-sub {
+  color: var(--text-solid-permanent);
+}
+
+.settings-list-mini {
+  align-items: center;
+  padding: 4px 0;
+}
+
+.settings-list-mini .settings-row {
+  justify-content: center;
+  width: 52px;
+  padding: 8px 0;
+}
+
+.settings-page {
+  max-width: 560px;
+}
+
+.settings-empty {
+  margin: 4px 0 12px;
+  color: var(--base-primary);
+  font-size: calc(14px + var(--fs));
+}
+
+.theme-swatches {
+  display: flex;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.theme-swatch {
+  width: 64px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid var(--base-bright);
+}
+
+.theme-swatch-green {
+  background: linear-gradient(135deg, #f6f6f6 50%, #d6ffe0 50%);
+}
+
+.theme-swatch-dark-green {
+  background: linear-gradient(135deg, #1c1c1d 50%, #2a4533 50%);
+}
+
+.theme-swatch-on {
+  border-color: var(--primary);
+}
+
+.session-list,
+.ignore-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-row,
+.ignore-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.session-icon {
+  flex: none;
+  color: var(--base-secondary);
+}
+
+.session-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.session-device,
+.ignore-name {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(15px + var(--fs));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-meta {
+  font-size: calc(13px + var(--fs));
+  color: var(--base-primary);
+}
+
+.session-close-all {
+  margin: 8px 0 4px;
+}
+
+.about-page p {
+  margin: 0 0 12px;
+  font-size: calc(15px + var(--fs));
+  line-height: 1.4;
+}
+
+.about-page .about-name {
+  margin-top: 8px;
+  font-size: calc(22px + var(--fs));
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.about-page .about-note {
+  font-size: calc(13px + var(--fs));
+  color: var(--base-primary);
+}
+
+/* Avatar picker (my profile, Introduce yourself). */
+.avatar-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avatar-picker-button:disabled {
+  color: var(--base-tertiary);
+  cursor: default;
+}
+
+.avatar-picker-error {
+  margin: 0;
+  font-size: calc(13px + var(--fs));
+  text-align: center;
+}
+
+/* My profile page and its dialogs. */
+.my-profile-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 16px;
+}
+
+.my-profile-name {
+  margin: 8px 0 0;
+  font-size: calc(20px + var(--fs));
+  font-weight: 600;
+  text-align: center;
+}
+
+.my-profile .row-value {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-dialog-footer {
+  padding: 12px 0 8px;
+}
+
+.profile-dialog-intro {
+  margin: 0 0 12px;
+  font-size: calc(15px + var(--fs));
+}
+
+.profile-dialog-hint {
+  margin: 0 0 8px;
+  font-size: calc(13px + var(--fs));
+  color: var(--base-primary);
+}

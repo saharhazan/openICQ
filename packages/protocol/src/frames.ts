@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { protocolErrorSchema } from './domain.ts';
 import { serverEventSchema } from './events.ts';
 
-/** Largest accepted frame in bytes. Large enough for the longest message plus JSON overhead. */
+/** Largest accepted frame in bytes: the longest message (10,000 characters of 4-byte UTF-8) plus JSON. */
 export const MAX_FRAME_BYTES = 64 * 1024;
 
 export const clientFrameSchema = z.object({
@@ -28,7 +28,8 @@ export type ServerFrame = z.infer<typeof serverFrameSchema>;
 /** WebSocket close codes used by the server (4000 to 4999 is the application range). */
 export const CLOSE_CODES = {
   unauthorized: 4001,
-  otherLocation: 4002,
+  /** Closed from "Session List" on another device. */
+  sessionClosed: 4002,
   signedOut: 4003,
   protocolViolation: 4004,
 } as const;

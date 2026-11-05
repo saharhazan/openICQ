@@ -14,18 +14,18 @@ export default defineConfig({
       '/ws': { target: `ws://${SERVER}`, ws: true },
     },
   },
-  css: {
-    // 98.css ships `@media (not(hover))`, which lightningcss rejects; keep the rule instead of failing the build.
-    lightningcss: { errorRecovery: true },
-  },
   build: {
     target: 'es2023',
     sourcemap: true,
+    // React, zod and the protocol schemas make one ~500 kB chunk; the emoji list is a separate asset.
+    chunkSizeWarningLimit: 600,
   },
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     restoreMocks: true,
+    // CSS is stubbed in tests, except where a test reads the metrics (bubble radii).
+    css: { include: [/bubble\.css/, /styles\/global\.css/] },
   },
 });

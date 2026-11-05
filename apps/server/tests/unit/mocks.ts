@@ -2,28 +2,28 @@
  * Strict mocks for the ports (London school): every method throws unless the
  * test configures it, so an unexpected collaboration fails loudly.
  */
-import type { SettableStatus, Uin } from '@openicq/protocol';
 import { vi, type Mocked } from 'vitest';
-import { DEFAULT_AWAY_MESSAGES, DEFAULT_PREFERENCES } from '../../src/domain/defaults.ts';
-import type { ContactRecord, UserRecord } from '../../src/domain/entities.ts';
-import type { Clock, Notifier, PasswordHasher, PresenceRegistry, SessionTokens, TransactionRunner } from '../../src/domain/ports.ts';
+import type { ChatRecord, FileRecord, MemberRecord, MessageRecord, UserRecord } from '../../src/domain/entities.ts';
+import type { Clock, Notifier, PasswordHasher, SessionTokens, TransactionRunner } from '../../src/domain/ports.ts';
 import type {
+  BlockRepository,
+  ChatRepository,
   ContactRepository,
-  IgnoreRepository,
+  FileRepository,
   MessageRepository,
-  NoticeRepository,
   SessionRepository,
   UserRepository,
 } from '../../src/domain/repositories.ts';
+import type { Uin } from '../../src/domain/vocabulary.ts';
 
-function strictMock<T extends object>(name: string, methods: readonly (keyof T & string)[]): Mocked<T> {
+export function strictMock<T extends object>(name: string, methods: readonly (keyof T & string)[]): Mocked<T> {
   const mock: Record<string, unknown> = {};
   for (const method of methods) {
     mock[method] = vi.fn(() => {
       throw new Error(`Unexpected call to ${name}.${method}`);
     });
   }
-  // Every method of T is present as a vi.fn, which is what Mocked<T> describes.
+  // Every listed method of T is present as a vi.fn, which is what Mocked<T> describes.
   return mock as Mocked<T>;
 }
 
@@ -31,45 +31,93 @@ export const mockUsers = () =>
   strictMock<UserRepository>('users', [
     'create',
     'findByUin',
-    'findByVisibleEmail',
-    'searchByDetails',
+    'findByEmail',
+    'findByNickname',
+    'search',
     'updateProfile',
-    'updateSettings',
+    'updateGroupInvites',
     'updatePassword',
     'touchLastSeen',
   ]);
 
 export const mockSessions = () =>
-  strictMock<SessionRepository>('sessions', ['create', 'find', 'touch', 'delete', 'deleteAllForUserExcept', 'deleteExpired']);
+  strictMock<SessionRepository>('sessions', [
+    'create',
+    'findByTokenHash',
+    'findById',
+    'listForUser',
+    'touch',
+    'delete',
+    'deleteOthers',
+    'deleteExpired',
+  ]);
 
-export const mockContacts = () =>
-  strictMock<ContactRepository>('contacts', [
-    'findActive',
-    'listActive',
-    'listWatchers',
-    'upsertActive',
-    'authorize',
-    'rename',
-    'remove',
+export const mockChats = () =>
+  strictMock<ChatRepository>('chats', [
+    'create',
+    'findById',
+    'findByPair',
+    'findFavorites',
+    'findByInviteToken',
+    'updateGroup',
+    'setInviteToken',
+    'touch',
+    'addMember',
+    'findMember',
+    'listMembers',
+    'listReadMarks',
+    'countMembers',
+    'listMemberships',
+    'listChatList',
+    'saveMember',
+    'setRole',
+    'advanceDelivered',
+    'unhideAll',
+    'removeMember',
+    'nextPinOrder',
+    'listCoMembers',
   ]);
 
 export const mockMessages = () =>
-  strictMock<MessageRepository>('messages', ['create', 'listUnread', 'markRead', 'history']);
+  strictMock<MessageRepository>('messages', [
+    'create',
+    'attachFiles',
+    'findById',
+    'findMany',
+    'history',
+    'lastVisible',
+    'maxId',
+    'countUnread',
+    'visibleIds',
+    'hiddenFor',
+    'hide',
+    'updateText',
+    'tombstone',
+    'attachmentsOf',
+    'setReaction',
+    'removeReaction',
+    'reactionCounts',
+  ]);
 
-export const mockNotices = () =>
-  strictMock<NoticeRepository>('notices', ['create', 'findUnresolved', 'listUnresolved', 'resolve', 'resolvePending']);
-
-export const mockIgnores = () => strictMock<IgnoreRepository>('ignores', ['add', 'remove', 'isIgnoring', 'list']);
-
+export const mockFiles = () =>
+  strictMock<FileRepository>('files', [
+    'create',
+    'findById',
+    'isSharedWith',
+    'bytesOwnedBy',
+    'totalBytes',
+    'deleteUnreferenced',
+    'deleteUnreferencedBefore',
+  ]);
+export const mockContacts = () => strictMock<ContactRepository>('contacts', ['add', 'remove', 'has', 'list', 'ownersOf']);
+export const mockBlocks = () => strictMock<BlockRepository>('blocks', ['add', 'remove', 'isBlocking', 'list']);
 export const mockHasher = () => strictMock<PasswordHasher>('hasher', ['hash', 'verify']);
-
 export const mockTokens = () => strictMock<SessionTokens>('tokens', ['issue', 'hash']);
+export const mockNotifier = () => strictMock<Notifier>('notifier', ['notify']);
 
-export function mockNotifier(): Mocked<Notifier> {
-  return { notify: vi.fn() };
-}
+export const immediateTransactions: TransactionRunner = { run: (work) => work() };
 
-export function fixedClock(iso = '2026-11-04T12:00:00.000Z'): Clock & { set(iso: string): void } {
+export function fixedClock(iso = '2026-11-05T12:00:00.000Z'): Clock & { set(iso: string): void } {
   let current = new Date(iso);
   return {
     now: () => new Date(current),
@@ -79,59 +127,88 @@ export function fixedClock(iso = '2026-11-04T12:00:00.000Z'): Clock & { set(iso:
   };
 }
 
-/** A presence registry backed by a plain map, so tests state who is online. */
-export function presenceOf(statuses: Record<Uin, SettableStatus>): PresenceRegistry {
-  const map = new Map<Uin, SettableStatus>(Object.entries(statuses).map(([uin, status]) => [Number(uin), status]));
-  return {
-    statusOf: (uin) => map.get(uin) ?? null,
-    set: (uin, status) => {
-      map.set(uin, status);
-    },
-    remove: (uin) => {
-      map.delete(uin);
-    },
-  };
-}
-
-export const immediateTransactions: TransactionRunner = { run: (work) => work() };
-
 export function user(uin: Uin, overrides: Partial<UserRecord> = {}): UserRecord {
   return {
     uin,
-    nickname: `User${uin}`,
-    firstName: '',
+    nickname: null,
+    firstName: `User${uin}`,
     lastName: '',
-    email: '',
-    gender: 'unspecified',
-    age: null,
-    country: '',
-    city: '',
-    homepage: '',
     about: '',
+    avatarFileId: null,
+    email: null,
     passwordHash: 'stored-hash',
-    authRequired: false,
-    webAware: false,
-    hideEmail: false,
-    preferences: { ...DEFAULT_PREFERENCES },
-    awayMessages: { ...DEFAULT_AWAY_MESSAGES },
+    groupInvites: 'everybody',
     createdAt: '2026-01-01T00:00:00.000Z',
     lastSeenAt: null,
     ...overrides,
   };
 }
 
-export function contactEntry(ownerUin: Uin, contactUin: Uin, overrides: Partial<ContactRecord> = {}): ContactRecord {
+export function chat(id: number, overrides: Partial<ChatRecord> = {}): ChatRecord {
   return {
-    ownerUin,
-    contactUin,
-    nickname: `User${contactUin}`,
-    authorized: true,
+    id,
+    type: 'direct',
+    pair: [100000, 100001],
+    title: '',
+    about: '',
+    rules: '',
+    avatarFileId: null,
+    joinWithApproval: false,
+    isPublic: false,
+    inviteToken: null,
     createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
 }
 
-/** A lookup that answers from a fixed list of users. */
-export function usersById(...records: UserRecord[]): (uin: Uin) => UserRecord | null {
-  return (uin) => records.find((record) => record.uin === uin) ?? null;
+export function member(chatId: number, uin: Uin, overrides: Partial<MemberRecord> = {}): MemberRecord {
+  return {
+    chatId,
+    uin,
+    role: 'member',
+    joinedAt: '2026-01-01T00:00:00.000Z',
+    lastReadId: 0,
+    lastDeliveredId: 0,
+    clearedBeforeId: 0,
+    pinOrder: null,
+    muted: false,
+    markedUnread: false,
+    hidden: false,
+    ...overrides,
+  };
+}
+
+export function message(id: number, chatId: number, senderUin: Uin, overrides: Partial<MessageRecord> = {}): MessageRecord {
+  return {
+    id,
+    chatId,
+    senderUin,
+    clientId: null,
+    text: `message ${id}`,
+    event: null,
+    replyToId: null,
+    forwardedFrom: null,
+    editedAt: null,
+    deleted: false,
+    sentAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function file(id: number, ownerUin: Uin, overrides: Partial<FileRecord> = {}): FileRecord {
+  return {
+    id,
+    ownerUin,
+    purpose: 'attachment',
+    storageName: '0123456789abcdef0123456789abcdef',
+    name: 'file.bin',
+    mime: 'application/octet-stream',
+    size: 10,
+    kind: 'file',
+    width: null,
+    height: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
 }
