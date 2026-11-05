@@ -205,6 +205,9 @@ export class NativeWindowManager {
         return;
       case 'restored':
       case 'focused':
+        // A window hidden in the tray has no taskbar button, so it cannot be restored or focused by
+        // the user; Windows still sends it focus when another window of the app closes. Ignore that.
+        if (tracked.minimized && HIDE_TO_TRAY.has(tracked.kind)) return;
         tracked.nativeHidden = false;
         if (event.type === 'focused') this.#setFocused(tracked.id);
         this.#fromNative(tracked.id, () => state.focusWindow(tracked.id));

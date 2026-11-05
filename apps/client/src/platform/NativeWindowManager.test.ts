@@ -150,6 +150,21 @@ describe('NativeWindowManager', () => {
     expect(manager.entries()[0]?.surface.active).toBe(false);
   });
 
+  it('ignores a focus the OS gives a window hidden in the tray (Windows does this when another window closes)', async () => {
+    store.getState().openWindow({ kind: 'contactList' });
+    manager.entries()[0]?.surface.ready();
+    await loadStyles(openedDoc(0));
+    store.getState().minimizeWindow('contactList');
+    expect(fake.bridge.hideWindow).toHaveBeenCalledWith('contactList');
+
+    fake.emit({ type: 'focused', id: 'contactList' });
+    expect(store.getState().windows.list[0]?.minimized).toBe(true);
+
+    fake.bridge.showWindow.mockClear();
+    store.getState().openWindow({ kind: 'contactList' });
+    expect(fake.bridge.showWindow).toHaveBeenCalledWith('contactList');
+  });
+
   it('stores moves and resizes, and remembers them for the window kind', () => {
     store.getState().openWindow({ kind: 'contactList' });
     fake.emit({ type: 'bounds', id: 'contactList', bounds: { x: 1200, y: 40, width: 200, height: 500 } });

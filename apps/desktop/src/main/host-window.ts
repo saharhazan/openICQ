@@ -211,7 +211,8 @@ export class HostWindow {
     child.on('restore', () => send({ type: 'restored', id }));
     child.on('focus', () => {
       child.flashFrame(false);
-      send({ type: 'focused', id });
+      // Windows can hand focus to a hidden window when another one closes; that is not the user's doing.
+      if (child.isVisible()) send({ type: 'focused', id });
     });
     child.on('blur', () => send({ type: 'blurred', id }));
     child.on('moved', sendBounds);
